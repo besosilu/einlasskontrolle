@@ -1,0 +1,22 @@
+version: "3.8"
+
+# Alles-in-einem Setup: ein Image enthält Postgres + Backend + Frontend.
+services:
+  app:
+    build: .
+    image: einlasskontrolle:latest
+    container_name: einlasskontrolle
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      POSTGRES_DB: einlass_db
+      POSTGRES_USER: einlass_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_URL: ${APP_URL}
+    volumes:
+      - einlass_data:/var/lib/postgresql/data
+
+volumes:
+  einlass_data:

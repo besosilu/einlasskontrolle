@@ -1,0 +1,84 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Member {
+  id            Int      @id @default(autoincrement())
+  memberNumber  String?  @unique @map("member_number") @db.VarChar(50)
+  lastName      String   @map("last_name") @db.VarChar(100)
+  firstName     String   @map("first_name") @db.VarChar(100)
+  source        String   @default("manual") @db.VarChar(20)
+  needsNewCard  Boolean  @default(false) @map("needs_new_card")
+  isTrainer     Boolean  @default(false) @map("is_trainer")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  entries     Entry[]
+  importLinks ImportMemberLink[]
+
+  @@index([lastName, firstName])
+  @@map("members")
+}
+
+model Entry {
+  id        Int      @id @default(autoincrement())
+  memberId  Int      @map("member_id")
+  member    Member   @relation(fields: [memberId], references: [id])
+  entryTime DateTime @default(now()) @map("entry_time") @db.Timestamptz()
+  entryDate DateTime @map("entry_date") @db.Date
+  method    String   @db.VarChar(10)
+  notes     String?
+  createdBy String?  @map("created_by") @db.VarChar(100)
+
+  @@index([memberId])
+  @@index([entryDate])
+  @@map("entries")
+}
+
+model ImportLog {
+  id             Int      @id @default(autoincrement())
+  filename       String   @db.VarChar(255)
+  importedAt     DateTime @default(now()) @map("imported_at") @db.Timestamptz()
+  recordsTotal   Int      @map("records_total")
+  recordsCreated Int      @map("records_created")
+  recordsUpdated Int      @map("records_updated")
+  recordsSkipped Int      @map("records_skipped")
+  errors         Json     @default("[]")
+
+  memberLinks ImportMemberLink[]
+
+  @@map("import_logs")
+}
+
+model PriceItem {
+  id          Int      @id @default(autoincrement())
+  category    String   @db.VarChar(20)
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  period      String?  @db.VarChar(50)
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@index([category, sortOrder])
+  @@map("price_items")
+}
+
+model ImportMemberLink {
+  importId Int       @map("import_id")
+  memberId Int       @map("member_id")
+  action   String    @db.VarChar(10)
+  import   ImportLog @relation(fields: [importId], references: [id], onDelete: Cascade)
+  member   Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@id([importId, memberId])
+  @@map("import_member_links")
+}

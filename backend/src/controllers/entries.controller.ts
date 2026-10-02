@@ -1,0 +1,131 @@
+import type { Request, Response, NextFunction } from 'express';
+import * as entriesService from '../services/entries.service.js';
+import * as membersService from '../services/members.service.js';
+import type { Warning } from '../types/api.types.js';
+
+export async function getTodayCount(req: Request, res: Response, next: NextFunction) {
+  try {
+    const count = await entriesService.getTodayCount();
+    res.json({ count, date: new Date().toISOString().split('T')[0] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function list(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await entriesService.getEntries({
+      date: req.query['date'] as string | undefined,
+      memberId: req.query['member_id'] ? Number(req.query['member_id']) : undefined,
+      from: req.query['from'] as string | undefined,
+      to: req.query['to'] as string | undefined,
+      method: req.query['method'] as string | undefined,
+      limit: req.query['limit'] ? Number(req.query['limit']) : undefined,
+      offset: req.query['offset'] ? Number(req.query['offset']) : undefined,
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function create(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { memberId, lastName, firstName, memberNumber, method, notes, entryDate } = req.body as {
+      memberId?: number;
+      lastName?: string;
+      firstName?: string;
+      memberNumber?: string;
+      method: 'scan' | 'manual';
+      notes?: string;
+      entryDate?: string;
+    };
+
+    if (!method || !['scan', 'manual'].includes(method)) {
+      return res.status(400).json({ error: 'Methode muss "scan" oder "manual" sein' });
+    }
+
+    let resolvedMemberId = memberId;
+
+    // If no memberId, find or create by name
+    if (!resolvedMemberId) {
+      if (!lastName || !firstName) {
+        return res
+          .status(400)
+          .json({ error: 'memberId oder Name + Vorname erforderlich' });
+      }
+      const { member } = await membersService.findOrCreateMember(
+        lastName,
+        firstName,
+        memberNumber
+      );
+      resolvedMemberId = member.id;
+    }
+
+    const warnings: Warning[] = [];
+
+    // Check duplicate (same person, same day)
+    const existing = await entriesService.getExistingEntryForDate(resolvedMemberId, entryDate);
+    if (existing) {
+      const member = await membersService.getMemberById(resolvedMemberId);
+      return res.status(200).json({
+        entry: existing,
+        member,
+        warnings: [
+          {
+            type: 'already_checked_in',
+            message: `${existing.member.firstName} ${existing.member.lastName} ist heute bereits um ${existing.entryTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr eingelassen worden.`,
+          },
+        ],
+        alreadyCheckedIn: true,
+      });
+    }
+
+    // Manual frequency warning
+    if (method === 'manual') {
+      const warning = await entriesService.checkManualWarning(resolvedMemberId);
+      if (warning) warnings.push(warning);
+    }
+
+    // Trial training warning (after 3rd visit)
+    const member = await membersService.getMemberById(resolvedMemberId);
+    if (member?.isTrial) {
+      const trialWarning = await entriesService.checkTrialWarning(resolvedMemberId);
+      if (trialWarning) warnings.push(trialWarning);
+    }
+
+    const entry = await entriesService.createEntry({
+      memberId: resolvedMemberId,
+      method,
+      notes,
+      entryDateOverride: entryDate,
+    });
+
+    res.status(201).json({
+      entry,
+      member: entry.member,
+      warnings,
+      alreadyCheckedIn: false,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateNotes(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { notes } = req.body as { notes: string | null };
+    const entry = await entriesService.updateEntryNotes(Number(req.params['id']), notes ?? null);
+    if (!entry) return res.status(404).json({ error: 'Eintrag nicht gefunden' });
+    res.json(entry);
+  } catch (err) { next(err); }
+}
+
+export async function remove(req: Request, res: Response, next: NextFunction) {
+  try {
+    await entriesService.deleteEntry(Number(req.params['id']));
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+}

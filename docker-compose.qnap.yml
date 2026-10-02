@@ -1,0 +1,82 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: einlass_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: einlass_db
+      POSTGRES_USER: einlass_user
+      POSTGRES_PASSWORD: EinlassDB_2024!
+    volumes:
+      - /share/Container/einlass/data/postgres:/var/lib/postgresql/data
+      - /share/Container/einlass/db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U einlass_user -d einlass_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - einlass-net
+
+  backend:
+    image: einlass_backend:latest
+    container_name: einlass_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://einlass_user:EinlassDB_2024!@db:5432/einlass_db
+      NODE_ENV: production
+      PORT: 3001
+      JWT_SECRET: einlass-secret-CHANGE-ME
+      APP_URL: http://192.168.178.34:8088
+      ADMIN_EMAIL: ""
+      SMTP_HOST: ""
+      SMTP_PORT: "587"
+      SMTP_SECURE: "false"
+      SMTP_USER: ""
+      SMTP_PASS: ""
+      SMTP_FROM: "Einlassüberwachung <noreply@localhost>"
+    depends_on:
+      - db
+    networks:
+      - einlass-net
+
+  frontend:
+    image: einlass_frontend:latest
+    container_name: einlass_frontend
+    restart: unless-stopped
+    networks:
+      - einlass-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: einlass_nginx
+    restart: unless-stopped
+    ports:
+      - "8088:8080"
+      - "8443:8443"
+    volumes:
+      - /share/Container/einlass/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /share/Container/einlass/data/certbot/conf:/etc/letsencrypt:ro
+      - /share/Container/einlass/data/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - einlass-net
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: einlass_certbot
+    restart: unless-stopped
+    volumes:
+      - /share/Container/einlass/data/certbot/conf:/etc/letsencrypt
+      - /share/Container/einlass/data/certbot/www:/var/www/certbot
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait; done"
+    networks:
+      - einlass-net
+
+networks:
+  einlass-net:
+    driver: bridge
