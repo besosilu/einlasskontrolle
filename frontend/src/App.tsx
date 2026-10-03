@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { ScannerPage } from './pages/ScannerPage';
+import { MembersPage } from './pages/MembersPage';
 import { StatsPage } from './pages/StatsPage';
 import { ImportPage } from './pages/ImportPage';
 import { PricesPage } from './pages/PricesPage';
@@ -51,6 +52,7 @@ export default function App() {
         }
       >
         <Route path="/" element={<ScannerPage />} />
+        <Route path="/members" element={<MembersPage />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/prices" element={<PricesPage />} />
         <Route path="/import" element={<ImportPage />} />
