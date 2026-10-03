@@ -23,6 +23,7 @@ Thumbs.db
 # Docker / Daten
 data/
 *.tar
+release/
 
 # Sonstiges
 *.local
