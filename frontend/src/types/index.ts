@@ -94,6 +94,7 @@ export interface Summary {
 export interface ImportResult {
   importId: number | null;
   filename: string;
+  resolvedEntryDate?: string;
   recordsTotal: number;
   recordsCreated: number;
   recordsUpdated: number;

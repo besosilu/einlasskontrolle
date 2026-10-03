@@ -1,6 +1,16 @@
 import type { Request, Response, NextFunction } from 'express';
 import * as importService from '../services/import.service.js';
 
+// Erkennt ein Datum im Format yyyy-mm-dd irgendwo im Dateinamen, z.B. "scan_2026-09-15.csv"
+function extractDateFromFilename(filename: string): string | undefined {
+  const match = filename.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return undefined;
+  const [, year, month, day] = match;
+  const date = new Date(`${year}-${month}-${day}T00:00:00`);
+  if (isNaN(date.getTime())) return undefined;
+  return `${year}-${month}-${day}`;
+}
+
 export async function importMembers(req: Request, res: Response, next: NextFunction) {
   try {
     const files = req.files as Express.Multer.File[] | undefined;
@@ -8,17 +18,19 @@ export async function importMembers(req: Request, res: Response, next: NextFunct
       return res.status(400).json({ error: 'Keine Dateien hochgeladen' });
     }
 
-    const entryDate = typeof req.body['entryDate'] === 'string' ? req.body['entryDate'] : undefined;
+    const fallbackEntryDate = typeof req.body['entryDate'] === 'string' ? req.body['entryDate'] : undefined;
     const results = [];
 
     for (const file of files) {
       const content = file.buffer.toString('utf-8').replace(/^\uFEFF/, ''); // BOM removal
+      const resolvedEntryDate = extractDateFromFilename(file.originalname) ?? fallbackEntryDate;
       try {
-        const result = await importService.importMembersFromCsv(content, file.originalname, entryDate);
-        results.push({ ...result, filename: file.originalname });
+        const result = await importService.importMembersFromCsv(content, file.originalname, resolvedEntryDate);
+        results.push({ ...result, filename: file.originalname, resolvedEntryDate });
       } catch (err) {
         results.push({
           filename: file.originalname,
+          resolvedEntryDate,
           importId: null,
           recordsTotal: 0,
           recordsCreated: 0,

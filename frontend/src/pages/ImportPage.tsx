@@ -76,7 +76,9 @@ export function ImportPage() {
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p className="mt-1 text-xs text-slate-400">
-            Die importierten Scans werden für dieses Datum gespeichert.
+            Wird nur verwendet, wenn der Dateiname kein Datum enthält. Enthält ein Dateiname ein Datum im Format{' '}
+            <span className="font-mono">yyyy-mm-dd</span> (z.B. <span className="font-mono">scan_2026-09-15.csv</span>),
+            wird dieses automatisch für den Import dieser Datei übernommen.
           </p>
         </div>
 
@@ -112,6 +114,11 @@ export function ImportPage() {
                     <CheckCircle className="h-4 w-4 text-emerald-500" />
                   )}
                   <span className="text-sm font-medium text-slate-700 truncate">{result.filename}</span>
+                  {result.resolvedEntryDate && (
+                    <span className="text-xs text-slate-400 flex-shrink-0">
+                      ({format(new Date(result.resolvedEntryDate), 'dd.MM.yyyy')})
+                    </span>
+                  )}
                 </div>
                 {result.failed ? (
                   <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
