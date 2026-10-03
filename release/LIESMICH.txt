@@ -1,0 +1,20 @@
+Einlassueberwachung - portable Installation
+=============================================
+
+Voraussetzung: Docker Desktop ist installiert und gestartet.
+
+1. Alle Dateien in diesem Ordner auf den Ziel-PC kopieren (z.B. per USB-Stick/Netzlaufwerk).
+2. start.bat per Doppelklick ausfuehren.
+   - Beim ersten Start wird .env aus .env.example erzeugt. Oeffne .env und passe
+     POSTGRES_PASSWORD und JWT_SECRET an, dann start.bat erneut ausfuehren.
+3. Im Browser oeffnen: http://localhost:3001
+4. Erster Login: admin@local / admin (Passwort muss beim ersten Login geaendert werden)
+
+Verwalten (in diesem Ordner, per PowerShell/CMD):
+  docker compose ps              - Status pruefen
+  docker compose logs -f         - Logs ansehen
+  docker compose down            - Stoppen
+  docker compose up -d           - Erneut starten
+
+Die Datenbank-Daten liegen in einem Docker-Volume und bleiben beim Stoppen/Neustarten
+erhalten. Nur "docker compose down -v" loescht sie.

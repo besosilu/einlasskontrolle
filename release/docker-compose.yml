@@ -1,0 +1,22 @@
+version: "3.8"
+
+# Fuer den portablen Einsatz: nutzt NUR das per "docker load" eingespielte Image,
+# baut nichts selbst (kein Quellcode/Dockerfile auf der Zielmaschine notwendig).
+services:
+  app:
+    image: einlasskontrolle:latest
+    container_name: einlasskontrolle
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      POSTGRES_DB: einlass_db
+      POSTGRES_USER: einlass_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_URL: ${APP_URL}
+    volumes:
+      - einlass_data:/var/lib/postgresql/data
+
+volumes:
+  einlass_data:
