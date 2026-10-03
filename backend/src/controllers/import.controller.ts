@@ -3,15 +3,34 @@ import * as importService from '../services/import.service.js';
 
 export async function importMembers(req: Request, res: Response, next: NextFunction) {
   try {
-    const file = req.file;
-    if (!file) {
-      return res.status(400).json({ error: 'Keine Datei hochgeladen' });
+    const files = req.files as Express.Multer.File[] | undefined;
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'Keine Dateien hochgeladen' });
     }
 
-    const content = file.buffer.toString('utf-8').replace(/^\uFEFF/, ''); // BOM removal
     const entryDate = typeof req.body['entryDate'] === 'string' ? req.body['entryDate'] : undefined;
-    const result = await importService.importMembersFromCsv(content, file.originalname, entryDate);
-    res.status(201).json(result);
+    const results = [];
+
+    for (const file of files) {
+      const content = file.buffer.toString('utf-8').replace(/^\uFEFF/, ''); // BOM removal
+      try {
+        const result = await importService.importMembersFromCsv(content, file.originalname, entryDate);
+        results.push({ ...result, filename: file.originalname });
+      } catch (err) {
+        results.push({
+          filename: file.originalname,
+          importId: null,
+          recordsTotal: 0,
+          recordsCreated: 0,
+          recordsUpdated: 0,
+          recordsSkipped: 0,
+          errors: [{ line: 0, content: '', reason: err instanceof Error ? err.message : 'Unbekannter Fehler' }],
+          failed: true,
+        });
+      }
+    }
+
+    res.status(201).json({ results });
   } catch (err) {
     next(err);
   }

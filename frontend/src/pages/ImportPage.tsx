@@ -8,15 +8,14 @@ import { ImportResult } from '@/components/import/ImportResult';
 import { Button } from '@/components/ui/Button';
 import { showToast } from '@/components/ui/Toast';
 import { formatDateTime } from '@/utils/dateUtils';
-import { History, Upload, CheckCircle, ChevronDown, ChevronUp, ExternalLink, Trash2 } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { History, Upload, CheckCircle, ChevronDown, ChevronUp, ExternalLink, Trash2, XCircle } from 'lucide-react';
 import type { ImportLog, ImportResult as ImportResultType } from '@/types';
 
 const HISTORY_LIMIT = 5;
 
 export function ImportPage() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [lastResult, setLastResult] = useState<ImportResultType | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [lastResults, setLastResults] = useState<ImportResultType[]>([]);
   const [entryDate, setEntryDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const queryClient = useQueryClient();
 
@@ -28,16 +27,19 @@ export function ImportPage() {
   const total = logsResult?.total ?? 0;
 
   const importMutation = useMutation({
-    mutationFn: (file: File) => importApi.importMembers(file, entryDate),
-    onSuccess: (result) => {
-      setLastResult(result);
+    mutationFn: (files: File[]) => importApi.importMembers(files, entryDate),
+    onSuccess: (batchResult) => {
+      setLastResults(batchResult.results);
       queryClient.invalidateQueries({ queryKey: ['import-logs'] });
       queryClient.invalidateQueries({ queryKey: ['member-search'] });
+      queryClient.invalidateQueries({ queryKey: ['members-list'] });
       queryClient.invalidateQueries({ queryKey: ['entries', entryDate] });
       queryClient.invalidateQueries({ queryKey: ['today-count'] });
+      const totalCreated = batchResult.results.reduce((sum, r) => sum + r.recordsCreated, 0);
+      const totalUpdated = batchResult.results.reduce((sum, r) => sum + r.recordsUpdated, 0);
       showToast(
         'success',
-        `Import abgeschlossen: ${result.recordsCreated} neu, ${result.recordsUpdated} aktualisiert.`
+        `${batchResult.results.length} Datei(en) importiert: ${totalCreated} neu, ${totalUpdated} aktualisiert.`
       );
     },
     onError: () => showToast('error', 'Import fehlgeschlagen. Bitte Dateiformat prüfen.'),
@@ -49,23 +51,24 @@ export function ImportPage() {
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
         <div>
-          <h2 className="text-sm font-semibold text-slate-700 mb-1">CSV-Datei hochladen</h2>
+          <h2 className="text-sm font-semibold text-slate-700 mb-1" id="csv-upload-heading">CSV-Dateien hochladen</h2>
           <p className="text-xs text-slate-500 mb-4">
             Format: <span className="font-mono">Mitgliedsnummer;Name;Vorname</span> – Semikolon als Trennzeichen, UTF-8-kodiert. CSV und TXT werden unterstützt.
-            Mitgliedsnummer <span className="font-mono">0</span> = manueller Eintrag.
+            Mitgliedsnummer <span className="font-mono">0</span> = manueller Eintrag. Mehrere Dateien gleichzeitig möglich.
           </p>
           <FileDropzone
-            onFile={setSelectedFile}
+            onFiles={setSelectedFiles}
             disabled={importMutation.isPending}
           />
         </div>
 
         {/* Date selector */}
         <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1">
+          <label htmlFor="import-entry-date" className="block text-sm font-semibold text-slate-700 mb-1">
             Datum des Imports
           </label>
           <input
+            id="import-entry-date"
             type="date"
             value={entryDate}
             onChange={(e) => setEntryDate(e.target.value)}
@@ -77,27 +80,51 @@ export function ImportPage() {
           </p>
         </div>
 
-        {selectedFile && !lastResult && (
-          <Button
-            onClick={() => importMutation.mutate(selectedFile)}
-            loading={importMutation.isPending}
-            className="w-full"
-          >
-            <Upload className="h-4 w-4" />
-            {importMutation.isPending ? 'Wird importiert...' : 'Import starten'}
-          </Button>
-        )}
+        {selectedFiles.length > 0 && lastResults.length === 0 && (() => {
+          const fileWord = selectedFiles.length === 1 ? 'Datei' : 'Dateien';
+          const buttonLabel = importMutation.isPending
+            ? 'Wird importiert...'
+            : `Import starten (${selectedFiles.length} ${fileWord})`;
+          return (
+            <Button
+              onClick={() => importMutation.mutate(selectedFiles)}
+              loading={importMutation.isPending}
+              className="w-full"
+            >
+              <Upload className="h-4 w-4" />
+              {buttonLabel}
+            </Button>
+          );
+        })()}
 
-        {lastResult && (
+        {lastResults.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-emerald-600">
               <CheckCircle className="h-5 w-5" />
-              <span className="text-sm font-semibold">Import erfolgreich abgeschlossen</span>
+              <span className="text-sm font-semibold">Import abgeschlossen</span>
             </div>
-            <ImportResult result={lastResult} />
+            {lastResults.map((result) => (
+              <div key={result.filename} className="rounded-lg border border-slate-200 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  {result.failed ? (
+                    <XCircle className="h-4 w-4 text-red-500" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  )}
+                  <span className="text-sm font-medium text-slate-700 truncate">{result.filename}</span>
+                </div>
+                {result.failed ? (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    Datei fehlgeschlagen: {result.errors[0]?.reason ?? 'Unbekannter Fehler'}
+                  </div>
+                ) : (
+                  <ImportResult result={result} />
+                )}
+              </div>
+            ))}
             <Button
               variant="secondary"
-              onClick={() => { setLastResult(null); setSelectedFile(null); }}
+              onClick={() => { setLastResults([]); setSelectedFiles([]); }}
               className="w-full"
             >
               Weiteren Import durchführen

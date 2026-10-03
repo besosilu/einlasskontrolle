@@ -12,6 +12,18 @@ export async function search(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+export async function list(req: Request, res: Response, next: NextFunction) {
+  try {
+    const search = String(req.query['search'] ?? '');
+    const limit = Math.min(Number(req.query['limit'] ?? 20), 100);
+    const offset = Number(req.query['offset'] ?? 0);
+    const result = await membersService.listMembers({ search, limit, offset });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getById(req: Request, res: Response, next: NextFunction) {
   try {
     const member = await membersService.getMemberById(Number(req.params['id']));

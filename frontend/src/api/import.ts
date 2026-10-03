@@ -1,13 +1,13 @@
 import client from './client';
-import type { ImportResult, ImportLog, ImportLogsResult } from '../types';
+import type { ImportBatchResult, ImportLog, ImportLogsResult } from '../types';
 
 export const importApi = {
-  importMembers: (file: File, entryDate?: string) => {
+  importMembers: (files: File[], entryDate?: string) => {
     const form = new FormData();
-    form.append('file', file);
+    files.forEach((f) => form.append('files', f));
     if (entryDate) form.append('entryDate', entryDate);
     return client
-      .post<ImportResult>('/import/members', form, {
+      .post<ImportBatchResult>('/import/members', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       .then((r) => r.data);

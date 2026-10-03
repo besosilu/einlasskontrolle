@@ -5,10 +5,16 @@ export interface Member {
   firstName: string;
   source: string;
   needsNewCard: boolean;
+  needsNewCardSince: string | null;
   isTrainer: boolean;
   isTrial: boolean;
   trialRegistrationDate: string | null;
   createdAt: string;
+}
+
+export interface MembersListResult {
+  members: Member[];
+  total: number;
 }
 
 export interface Entry {
@@ -86,12 +92,18 @@ export interface Summary {
 }
 
 export interface ImportResult {
-  importId: number;
+  importId: number | null;
+  filename: string;
   recordsTotal: number;
   recordsCreated: number;
   recordsUpdated: number;
   recordsSkipped: number;
   errors: { line: number; content: string; reason: string }[];
+  failed?: boolean;
+}
+
+export interface ImportBatchResult {
+  results: ImportResult[];
 }
 
 export interface ImportLog {

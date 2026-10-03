@@ -55,6 +55,38 @@ export async function searchMembers(query: string, limit = 10) {
   return members.map(mapMember);
 }
 
+export async function listMembers(opts: { search?: string; limit?: number; offset?: number }) {
+  const search = opts.search?.trim() ?? '';
+  const limit = opts.limit ?? 20;
+  const offset = opts.offset ?? 0;
+
+  const whereClause = search
+    ? sql`
+        WHERE
+          last_name ILIKE ${'%' + search + '%'}
+          OR first_name ILIKE ${'%' + search + '%'}
+          OR (last_name || ' ' || first_name) ILIKE ${'%' + search + '%'}
+          OR (first_name || ' ' || last_name) ILIKE ${'%' + search + '%'}
+          OR member_number ILIKE ${'%' + search + '%'}
+      `
+    : sql``;
+
+  const [members, countResult] = await Promise.all([
+    sql<MemberRow[]>`
+      SELECT ${sql.unsafe(MEMBER_COLS)}
+      FROM members
+      ${whereClause}
+      ORDER BY last_name, first_name
+      LIMIT ${limit} OFFSET ${offset}
+    `,
+    sql<[{ count: string }]>`
+      SELECT COUNT(*) AS count FROM members ${whereClause}
+    `,
+  ]);
+
+  return { members: members.map(mapMember), total: Number(countResult[0].count) };
+}
+
 export async function getMemberById(id: number) {
   const [m] = await sql<MemberRow[]>`
     SELECT ${sql.unsafe(MEMBER_COLS)} FROM members WHERE id = ${id}

@@ -3,31 +3,31 @@ import { Upload, FileText } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 interface FileDropzoneProps {
-  onFile: (file: File) => void;
+  onFiles: (files: File[]) => void;
   accept?: string;
   disabled?: boolean;
 }
 
-export function FileDropzone({ onFile, accept = '.csv,.txt', disabled }: FileDropzoneProps) {
+export function FileDropzone({ onFiles, accept = '.csv,.txt', disabled }: FileDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  function handleFile(file: File) {
-    setSelectedFile(file);
-    onFile(file);
+  function handleFiles(files: File[]) {
+    setSelectedFiles(files);
+    onFiles(files);
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) handleFiles(files);
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    const files = Array.from(e.target.files ?? []);
+    if (files.length > 0) handleFiles(files);
   }
 
   return (
@@ -46,22 +46,29 @@ export function FileDropzone({ onFile, accept = '.csv,.txt', disabled }: FileDro
         ref={inputRef}
         type="file"
         accept={accept}
+        multiple
         onChange={handleChange}
         className="hidden"
         disabled={disabled}
       />
 
-      {selectedFile ? (
-        <>
-          <FileText className="h-10 w-10 text-blue-500" />
-          <p className="mt-3 font-medium text-slate-700">{selectedFile.name}</p>
-          <p className="text-xs text-slate-400 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-        </>
+      {selectedFiles.length > 0 ? (
+        <div className="w-full max-h-48 overflow-y-auto space-y-2">
+          {selectedFiles.map((file) => (
+            <div key={`${file.name}-${file.size}`} className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-2">
+              <FileText className="h-5 w-5 flex-shrink-0 text-blue-500" />
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-sm font-medium text-slate-700">{file.name}</p>
+                <p className="text-xs text-slate-400">{(file.size / 1024).toFixed(1)} KB</p>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <>
           <Upload className="h-10 w-10 text-slate-300" />
-          <p className="mt-3 text-sm font-medium text-slate-600">CSV- oder TXT-Datei hierher ziehen</p>
-          <p className="text-xs text-slate-400 mt-1">oder klicken zum Auswählen</p>
+          <p className="mt-3 text-sm font-medium text-slate-600">CSV- oder TXT-Dateien hierher ziehen</p>
+          <p className="text-xs text-slate-400 mt-1">oder klicken zum Auswählen (Mehrfachauswahl möglich)</p>
           <p className="mt-3 text-xs text-slate-400 bg-slate-100 rounded px-2 py-1 font-mono">
             Mitgliedsnummer;Name;Vorname
           </p>
