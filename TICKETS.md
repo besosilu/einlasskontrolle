@@ -41,25 +41,25 @@ Neuer Endpunkt für das kommende Mitgliederregister, getrennt vom bestehenden Su
 
 ## [Frontend] Mitgliederregister-Seite (`/members`)
 
-**Status:** 🚧 offen
+**Status:** ✅ bereits umgesetzt (dieser Branch)
 
 Neue Seite mit Tabelle aller Mitglieder, durchsuchbar und paginiert, nutzt den neuen `GET /members/list`-Endpunkt.
 
-- [ ] `frontend/src/pages/MembersPage.tsx`: Suchfeld (debounced), Tabelle (Name, Mitgliedsnummer, Quelle-Badge, Flags-Badges, Aktionen), Pagination (Muster aus `LogsPage.tsx`)
-- [ ] `frontend/src/components/layout/Sidebar.tsx`: neuer Nav-Eintrag "Mitglieder" (Icon `IdCard`), direkt nach "Einlass"
-- [ ] `frontend/src/App.tsx`: Route `/members` (kein Admin-Gate, für alle eingeloggten Nutzer sichtbar)
-- [ ] `frontend/src/api/members.ts`: `list()`-Methode (bereits vorhanden ✅), ggf. Feinschliff
+- [x] `frontend/src/pages/MembersPage.tsx`: Suchfeld (debounced), Tabelle (Name, Mitgliedsnummer, Quelle-Badge, Flags-Badges, Aktionen), Pagination (Muster aus `LogsPage.tsx`)
+- [x] `frontend/src/components/layout/Sidebar.tsx`: neuer Nav-Eintrag "Mitglieder" (Icon `IdCard`), direkt nach "Einlass"
+- [x] `frontend/src/App.tsx`: Route `/members` (kein Admin-Gate, für alle eingeloggten Nutzer sichtbar)
+- [x] `frontend/src/api/members.ts`: `list()`-Methode
 
 ---
 
 ## [Frontend] Mitglied bearbeiten (Dialog)
 
-**Status:** 🚧 offen
+**Status:** ✅ bereits umgesetzt (dieser Branch)
 
-- [ ] `frontend/src/components/members/MemberEditDialog.tsx` (neu): Name/Mitgliedsnummer-Felder + Flags (`needsNewCard`, `isTrainer`, `isTrial` inkl. `trialRegistrationDate`)
-- [ ] Nutzt bestehende Endpunkte `PUT /members/:id` und `PATCH /members/:id/flags` (keine neuen Backend-Änderungen nötig)
-- [ ] `api/members.ts`: `update()`-Methode (bereits vorhanden ✅)
-- [ ] Einbindung in `MembersPage.tsx` (Button "Bearbeiten" pro Zeile)
+- [x] `frontend/src/components/members/MemberEditDialog.tsx` (neu): Name/Mitgliedsnummer-Felder + Flags (`needsNewCard`, `isTrainer`, `isTrial` inkl. `trialRegistrationDate`)
+- [x] Nutzt bestehende Endpunkte `PUT /members/:id` und `PATCH /members/:id/flags` (keine neuen Backend-Änderungen nötig)
+- [x] `api/members.ts`: `update()`-Methode
+- [x] Einbindung in `MembersPage.tsx` (Button "Bearbeiten" pro Zeile)
 - [ ] Nach Speichern: Query-Invalidierung für `members-list` und `member-search` (Autocomplete bleibt konsistent)
 
 ---
