@@ -136,6 +136,13 @@ export async function runMigrations() {
         ALTER TABLE members ADD COLUMN IF NOT EXISTS trial_registration_date DATE;
       `,
     },
+    {
+      // NULL for imports made before this counter existed
+      name: '008_import_entries_created',
+      sql: `
+        ALTER TABLE import_logs ADD COLUMN IF NOT EXISTS entries_created INTEGER;
+      `,
+    },
   ];
 
   for (const migration of migrations) {

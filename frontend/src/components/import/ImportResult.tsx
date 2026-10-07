@@ -1,4 +1,4 @@
-import { CheckCircle, RefreshCw, SkipForward, AlertTriangle } from 'lucide-react';
+import { LogIn, CheckCircle, RefreshCw, SkipForward, AlertTriangle } from 'lucide-react';
 import type { ImportResult as ImportResultType } from '@/types';
 
 interface ImportResultProps {
@@ -7,9 +7,10 @@ interface ImportResultProps {
 
 export function ImportResult({ result }: ImportResultProps) {
   const stats = [
-    { label: 'Neu angelegt', value: result.recordsCreated, icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50' },
+    { label: 'Eintritte erfasst', value: result.entriesCreated, icon: LogIn, color: 'text-indigo-600 bg-indigo-50' },
+    { label: 'Neue Mitglieder', value: result.recordsCreated, icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50' },
     { label: 'Aktualisiert', value: result.recordsUpdated, icon: RefreshCw, color: 'text-blue-600 bg-blue-50' },
-    { label: 'Übersprungen', value: result.recordsSkipped, icon: SkipForward, color: 'text-slate-500 bg-slate-50' },
+    { label: 'Bereits erfasst', value: result.recordsSkipped, icon: SkipForward, color: 'text-slate-500 bg-slate-50' },
     { label: 'Fehler', value: result.errors.length, icon: AlertTriangle, color: 'text-red-500 bg-red-50' },
   ];
 
@@ -19,7 +20,7 @@ export function ImportResult({ result }: ImportResultProps) {
         <span className="font-semibold">{result.recordsTotal}</span> Zeilen verarbeitet
       </p>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {stats.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 text-center">
             <div className={`mx-auto mb-2 inline-flex rounded-lg p-2 ${color}`}>

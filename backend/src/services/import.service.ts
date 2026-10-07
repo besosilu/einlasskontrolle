@@ -7,6 +7,7 @@ export async function importMembersFromCsv(fileContent: string, filename: string
   let recordsCreated = 0;
   let recordsUpdated = 0;
   let recordsSkipped = 0;
+  let entriesCreated = 0;
   const memberLinks: Array<{ memberId: number; action: string }> = [];
   const importErrors = [...errors];
 
@@ -46,7 +47,7 @@ export async function importMembersFromCsv(fileContent: string, filename: string
         const method = isManual ? 'manual' : 'scan';
         const { memberId, action, hasEntry } = await tx.savepoint(async (sp) => {
           let memberId: number;
-          let action: 'created' | 'updated' | 'skipped';
+          let action: 'created' | 'updated' | 'unchanged';
 
           if (!isManual) {
             const [existing] = await sp<{ id: number; last_name: string; first_name: string }[]>`
@@ -69,7 +70,7 @@ export async function importMembersFromCsv(fileContent: string, filename: string
                 `;
                 action = 'updated';
               } else {
-                action = 'skipped';
+                action = 'unchanged';
               }
               memberId = existing.id;
             }
@@ -89,7 +90,7 @@ export async function importMembersFromCsv(fileContent: string, filename: string
               action = 'created';
             } else {
               memberId = existing.id;
-              action = 'skipped';
+              action = 'unchanged';
             }
           }
 
@@ -106,15 +107,18 @@ export async function importMembersFromCsv(fileContent: string, filename: string
           return { memberId, action, hasEntry: !!existingEntry };
         });
 
-        // Only count once the row's savepoint has been committed
+        // Only count once the row's savepoint has been committed.
+        // Members are scanned on many days, so a row is only "skipped" when the entry
+        // for this day already exists; otherwise a new entry was recorded.
         if (action === 'created') recordsCreated++;
         else if (action === 'updated') recordsUpdated++;
-        else recordsSkipped++;
+        if (hasEntry) recordsSkipped++;
+        else entriesCreated++;
 
         // The same member may be matched by several rows (e.g. manual entries); link it only once
         if (!linkedMemberIds.has(memberId)) {
           linkedMemberIds.add(memberId);
-          memberLinks.push({ memberId, action: hasEntry ? 'skipped' : action });
+          memberLinks.push({ memberId, action: hasEntry || action === 'unchanged' ? 'skipped' : action });
         }
       } catch (err) {
         importErrors.push({
@@ -126,9 +130,9 @@ export async function importMembersFromCsv(fileContent: string, filename: string
     }
 
     const [log] = await tx<{ id: number }[]>`
-      INSERT INTO import_logs (filename, records_total, records_created, records_updated, records_skipped, errors)
+      INSERT INTO import_logs (filename, records_total, records_created, records_updated, records_skipped, entries_created, errors)
       VALUES (
-        ${filename}, ${rows.length}, ${recordsCreated}, ${recordsUpdated}, ${recordsSkipped},
+        ${filename}, ${rows.length}, ${recordsCreated}, ${recordsUpdated}, ${recordsSkipped}, ${entriesCreated},
         ${JSON.stringify(importErrors)}
       )
       RETURNING id
@@ -149,6 +153,7 @@ export async function importMembersFromCsv(fileContent: string, filename: string
     recordsCreated,
     recordsUpdated,
     recordsSkipped,
+    entriesCreated,
     errors: importErrors,
   };
 }
@@ -156,7 +161,7 @@ export async function importMembersFromCsv(fileContent: string, filename: string
 type ImportLogRow = {
   id: number; filename: string; imported_at: Date;
   records_total: number; records_created: number; records_updated: number; records_skipped: number;
-  errors: unknown;
+  entries_created: number | null; errors: unknown;
 };
 
 function mapImportLog(r: ImportLogRow) {
@@ -168,6 +173,7 @@ function mapImportLog(r: ImportLogRow) {
     recordsCreated: r.records_created,
     recordsUpdated: r.records_updated,
     recordsSkipped: r.records_skipped,
+    entriesCreated: r.entries_created,
     errors: r.errors,
   };
 }
@@ -175,7 +181,7 @@ function mapImportLog(r: ImportLogRow) {
 export async function getImportLogs(limit = 20, offset = 0) {
   const [rows, countResult] = await Promise.all([
     sql<ImportLogRow[]>`
-      SELECT id, filename, imported_at, records_total, records_created, records_updated, records_skipped, errors
+      SELECT id, filename, imported_at, records_total, records_created, records_updated, records_skipped, entries_created, errors
       FROM import_logs ORDER BY imported_at DESC LIMIT ${limit} OFFSET ${offset}
     `,
     sql<[{ count: string }]>`SELECT COUNT(*) AS count FROM import_logs`,
@@ -191,9 +197,9 @@ export async function getImportLogById(id: number) {
   const [log] = await sql<{
     id: number; filename: string; imported_at: Date;
     records_total: number; records_created: number; records_updated: number; records_skipped: number;
-    errors: unknown;
+    entries_created: number | null; errors: unknown;
   }[]>`
-    SELECT id, filename, imported_at, records_total, records_created, records_updated, records_skipped, errors
+    SELECT id, filename, imported_at, records_total, records_created, records_updated, records_skipped, entries_created, errors
     FROM import_logs WHERE id = ${id}
   `;
   if (!log) return null;
@@ -217,6 +223,7 @@ export async function getImportLogById(id: number) {
     recordsCreated: log.records_created,
     recordsUpdated: log.records_updated,
     recordsSkipped: log.records_skipped,
+    entriesCreated: log.entries_created,
     errors: log.errors,
     memberLinks: links.map((l) => ({
       memberId: l.member_id,

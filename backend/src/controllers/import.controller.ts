@@ -36,6 +36,7 @@ export async function importMembers(req: Request, res: Response, next: NextFunct
           recordsCreated: 0,
           recordsUpdated: 0,
           recordsSkipped: 0,
+          entriesCreated: 0,
           errors: [{ line: 0, content: '', reason: err instanceof Error ? err.message : 'Unbekannter Fehler' }],
           failed: true,
         });

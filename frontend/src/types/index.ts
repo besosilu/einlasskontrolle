@@ -99,6 +99,7 @@ export interface ImportResult {
   recordsCreated: number;
   recordsUpdated: number;
   recordsSkipped: number;
+  entriesCreated: number;
   errors: { line: number; content: string; reason: string }[];
   failed?: boolean;
 }
@@ -115,6 +116,7 @@ export interface ImportLog {
   recordsCreated: number;
   recordsUpdated: number;
   recordsSkipped: number;
+  entriesCreated: number | null;
   errors: { line: number; content: string; reason: string }[];
 }
 

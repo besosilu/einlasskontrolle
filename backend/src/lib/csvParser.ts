@@ -27,7 +27,12 @@ export function parseMemberCsv(content: string): ParseResult {
     const lineNum = i + 1;
 
     // Support both header row (if present) and raw positional
-    const cols = Object.values(raw).map((v) => (v ?? '').toString().trim());
+    let cols = Object.values(raw).map((v) => (v ?? '').toString().trim());
+
+    // Manually typed rows sometimes use commas, e.g. "0;Macholl, Lukas" or "0, Rahli, Lina"
+    if (cols.length < 3 && cols.some((c) => c.includes(','))) {
+      cols = cols.flatMap((c) => c.split(',')).map((c) => c.trim());
+    }
 
     // Skip header rows
     if (

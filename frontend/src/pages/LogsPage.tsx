@@ -126,6 +126,9 @@ function ImportLogRow({ log, onDelete, deleteDisabled }: { log: ImportLog; onDel
           <p className="text-xs text-slate-400">{formatDateTime(log.importedAt)}</p>
         </div>
         <div className="flex items-center gap-3 text-xs text-slate-500 flex-shrink-0">
+          {log.entriesCreated !== null && (
+            <span className="text-indigo-600 font-medium">{log.entriesCreated} Eintritte</span>
+          )}
           <span className="text-emerald-600 font-medium">+{log.recordsCreated} neu</span>
           <span className="text-blue-600 font-medium">~{log.recordsUpdated} akt.</span>
           {hasErrors ? (
