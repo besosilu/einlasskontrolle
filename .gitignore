@@ -27,3 +27,6 @@ release/
 
 # Sonstiges
 *.local
+
+# Lokale Datenbank-Backups (personenbezogene Daten)
+backups/
