@@ -4,6 +4,8 @@ import { entriesApi } from '@/api/entries';
 import { EntryCard } from './EntryCard';
 import { Loader2, Inbox } from 'lucide-react';
 
+const DAY_ENTRY_LIMIT = 5000;
+
 interface EntryListProps {
   date?: Date;
 }
@@ -15,7 +17,8 @@ export function EntryList({ date }: EntryListProps) {
 
   const { data, isLoading } = useQuery({
     queryKey: ['entries', dateStr],
-    queryFn: () => entriesApi.list({ date: dateStr }),
+    // The backend defaults to 100 entries; a day can have more, and the summary counts all of them
+    queryFn: () => entriesApi.list({ date: dateStr, limit: DAY_ENTRY_LIMIT }),
     refetchInterval: isToday ? 15_000 : false,
   });
 
@@ -48,7 +51,7 @@ export function EntryList({ date }: EntryListProps) {
       {/* Summary bar */}
       <div className="grid grid-cols-5 gap-1 rounded-lg bg-slate-50 p-2 text-center text-xs">
         <div>
-          <p className="font-semibold text-slate-700">{entries.length}</p>
+          <p className="font-semibold text-slate-700">{data?.total ?? entries.length}</p>
           <p className="text-slate-400">Gesamt</p>
         </div>
         <div>
