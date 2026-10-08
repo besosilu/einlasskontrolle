@@ -5,6 +5,7 @@ const router = Router();
 
 router.get('/today/count', ctrl.getTodayCount);
 router.get('/export', ctrl.exportMembers);
+router.get('/export/summary', ctrl.exportSummary);
 router.get('/', ctrl.list);
 router.post('/', ctrl.create);
 router.patch('/:id/notes', ctrl.updateNotes);

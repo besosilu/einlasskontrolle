@@ -1,5 +1,5 @@
 import client from './client';
-import type { EntryResult, TodayCountResult, EntriesResult } from '../types';
+import type { EntryResult, TodayCountResult, EntriesResult, ExportKind, ExportSummary } from '../types';
 import { todayIso } from '../utils/dateUtils';
 
 // The browser decides what "today" and "now" are; the server clock can drift (e.g. Docker Desktop after standby)
@@ -26,7 +26,10 @@ export const entriesApi = {
     offset?: number;
   }) => client.get<EntriesResult>('/entries', { params }).then((r) => r.data),
 
-  exportMembers: (date: string, type: 'new-card' | 'trial' | 'pre-swim') =>
+  exportSummary: (date: string) =>
+    client.get<ExportSummary>('/entries/export/summary', { params: { date } }).then((r) => r.data),
+
+  exportMembers: (date: string, type: ExportKind) =>
     client
       .get<Blob>('/entries/export', { params: { date, type }, responseType: 'blob' })
       .then((r) => ({

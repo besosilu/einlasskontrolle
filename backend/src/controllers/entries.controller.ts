@@ -154,3 +154,13 @@ export async function exportMembers(req: Request, res: Response, next: NextFunct
     next(err);
   }
 }
+
+export async function exportSummary(req: Request, res: Response, next: NextFunction) {
+  try {
+    const day = parseDay(req.query['date']);
+    if (!day) return res.status(400).json({ error: 'Datum (yyyy-MM-dd) erforderlich' });
+    res.json(await entriesService.getExportSummary(day));
+  } catch (err) {
+    next(err);
+  }
+}

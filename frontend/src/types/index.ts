@@ -41,6 +41,20 @@ export interface EntryResult {
   alreadyCheckedIn: boolean;
 }
 
+export type ExportKind = 'new-card' | 'trial' | 'pre-swim';
+
+export interface ExportRow {
+  memberNumber: string | null;
+  lastName: string;
+  firstName: string;
+}
+
+export interface ExportSummary {
+  newCard: ExportRow[];
+  trial: ExportRow[];
+  preSwim: ExportRow[];
+}
+
 export interface TodayCountResult {
   count: number;
   date: string;

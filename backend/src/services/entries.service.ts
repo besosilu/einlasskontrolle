@@ -215,8 +215,14 @@ function csvField(value: string | null): string {
   return /[;"\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }
 
-// Members with an entry on the given day who currently have the flag, as "Mitgliedsnummer;Name;Vorname"
-export async function exportMembersForDay(day: string, kind: MemberExportKind): Promise<{ csv: string; count: number }> {
+export interface ExportRow {
+  memberNumber: string | null;
+  lastName: string;
+  firstName: string;
+}
+
+// Members with an entry on the given day who currently have the flag
+async function getExportRows(day: string, kind: MemberExportKind): Promise<ExportRow[]> {
   const flag = kind === 'new-card' ? sql`m.needs_new_card` : kind === 'trial' ? sql`m.is_trial` : sql`m.is_preswim`;
   const rows = await sql<{ member_number: string | null; last_name: string; first_name: string }[]>`
     SELECT DISTINCT m.member_number, m.last_name, m.first_name
@@ -225,6 +231,22 @@ export async function exportMembersForDay(day: string, kind: MemberExportKind): 
     WHERE e.entry_date = ${day}::date AND ${flag}
     ORDER BY m.last_name, m.first_name
   `;
-  const lines = ['Mitgliedsnummer;Name;Vorname', ...rows.map((r) => [r.member_number, r.last_name, r.first_name].map(csvField).join(';'))];
+  return rows.map((r) => ({ memberNumber: r.member_number, lastName: r.last_name, firstName: r.first_name }));
+}
+
+// "Mitgliedsnummer;Name;Vorname"
+export async function exportMembersForDay(day: string, kind: MemberExportKind): Promise<{ csv: string; count: number }> {
+  const rows = await getExportRows(day, kind);
+  const lines = ['Mitgliedsnummer;Name;Vorname', ...rows.map((r) => [r.memberNumber, r.lastName, r.firstName].map(csvField).join(';'))];
   return { csv: lines.join('\r\n') + '\r\n', count: rows.length };
+}
+
+// All three export lists of a day, for the preview dialog
+export async function getExportSummary(day: string) {
+  const [newCard, trial, preSwim] = await Promise.all([
+    getExportRows(day, 'new-card'),
+    getExportRows(day, 'trial'),
+    getExportRows(day, 'pre-swim'),
+  ]);
+  return { newCard, trial, preSwim };
 }
