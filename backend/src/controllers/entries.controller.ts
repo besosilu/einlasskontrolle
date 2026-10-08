@@ -2,11 +2,13 @@ import type { Request, Response, NextFunction } from 'express';
 import * as entriesService from '../services/entries.service.js';
 import * as membersService from '../services/members.service.js';
 import type { Warning } from '../types/api.types.js';
+import { parseClientNow, parseDay, toDayString } from '../lib/dateParams.js';
 
 export async function getTodayCount(req: Request, res: Response, next: NextFunction) {
   try {
-    const count = await entriesService.getTodayCount();
-    res.json({ count, date: new Date().toISOString().split('T')[0] });
+    const day = parseDay(req.query['date']) ?? toDayString(new Date());
+    const count = await entriesService.getTodayCount(day);
+    res.json({ count, date: day });
   } catch (err) {
     next(err);
   }
@@ -31,7 +33,8 @@ export async function list(req: Request, res: Response, next: NextFunction) {
 
 export async function create(req: Request, res: Response, next: NextFunction) {
   try {
-    const { memberId, lastName, firstName, memberNumber, method, notes, entryDate } = req.body as {
+    const { memberId, lastName, firstName, memberNumber, method, notes, entryDate, clientNow } = req.body as {
+      clientNow?: string;
       memberId?: number;
       lastName?: string;
       firstName?: string;
@@ -99,6 +102,7 @@ export async function create(req: Request, res: Response, next: NextFunction) {
       method,
       notes,
       entryDateOverride: entryDate,
+      clientNow: parseClientNow(clientNow),
     });
 
     res.status(201).json({

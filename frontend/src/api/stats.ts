@@ -1,5 +1,6 @@
 import client from './client';
 import type { DayStats, MemberStats, Summary } from '../types';
+import { todayIso } from '../utils/dateUtils';
 
 export interface NewCardStat {
   id: number;
@@ -27,7 +28,7 @@ export interface Workload {
 
 export const statsApi = {
   dashboard: () =>
-    client.get<Dashboard>('/stats/dashboard').then((r) => r.data),
+    client.get<Dashboard>('/stats/dashboard', { params: { date: todayIso() } }).then((r) => r.data),
 
   workload: () =>
     client.get<Workload>('/stats/workload').then((r) => r.data),

@@ -1,9 +1,10 @@
 import type { Request, Response, NextFunction } from 'express';
 import * as statsService from '../services/stats.service.js';
+import { parseDay } from '../lib/dateParams.js';
 
-export async function dashboard(_req: Request, res: Response, next: NextFunction) {
+export async function dashboard(req: Request, res: Response, next: NextFunction) {
   try {
-    const data = await statsService.getDashboard();
+    const data = await statsService.getDashboard(parseDay(req.query['date']));
     res.json(data);
   } catch (err) { next(err); }
 }

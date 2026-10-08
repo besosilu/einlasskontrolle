@@ -1,5 +1,6 @@
 import sql from '../lib/db.js';
 import type { Warning } from '../types/api.types.js';
+import { parseDay, toDayString } from '../lib/dateParams.js';
 
 const MANUAL_WARNING_DAYS = 28;
 const MANUAL_WARNING_THRESHOLD = 2;
@@ -61,15 +62,10 @@ const ENTRY_SELECT = sql`
   JOIN members m ON m.id = e.member_id
 `;
 
-export async function getTodayCount(): Promise<number> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
+// "day" is the date of the client's browser (yyyy-MM-dd); the server clock is only the fallback
+export async function getTodayCount(day: string = toDayString(new Date())): Promise<number> {
   const [{ count }] = await sql<[{ count: string }]>`
-    SELECT COUNT(*) AS count FROM entries
-    WHERE entry_time >= ${today} AND entry_time < ${tomorrow}
+    SELECT COUNT(*) AS count FROM entries WHERE entry_date = ${day}::date
   `;
   return Number(count);
 }
@@ -85,12 +81,9 @@ export async function getEntries(params: {
 }) {
   const conditions: ReturnType<typeof sql>[] = [];
 
-  if (params.date) {
-    const d = new Date(params.date);
-    d.setHours(0, 0, 0, 0);
-    const next = new Date(d);
-    next.setDate(next.getDate() + 1);
-    conditions.push(sql`e.entry_time >= ${d} AND e.entry_time < ${next}`);
+  const day = parseDay(params.date);
+  if (day) {
+    conditions.push(sql`e.entry_date = ${day}::date`);
   } else {
     if (params.from) conditions.push(sql`e.entry_time >= ${new Date(params.from)}`);
     if (params.to) {
@@ -162,21 +155,22 @@ export async function createEntry(data: {
   notes?: string;
   createdBy?: string;
   entryDateOverride?: string;
+  clientNow?: Date;
 }) {
-  const now = new Date();
-  let entryTime = now;
-  let entryDate = new Date(now);
-  entryDate.setHours(0, 0, 0, 0);
+  // The browser's clock wins over the server clock, which can drift (e.g. Docker Desktop after standby)
+  const now = data.clientNow ?? new Date();
+  const entryDay = parseDay(data.entryDateOverride) ?? toDayString(now);
 
-  if (data.entryDateOverride) {
-    const [y, m, d] = data.entryDateOverride.split('-').map(Number);
+  // Entries for the current day get the real time; backdated entries keep only the time of day
+  let entryTime = now;
+  if (entryDay !== toDayString(now)) {
+    const [y, m, d] = entryDay.split('-').map(Number);
     entryTime = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
-    entryDate = new Date(y, m - 1, d);
   }
 
   const [created] = await sql<{ id: number }[]>`
     INSERT INTO entries (member_id, method, entry_time, entry_date, notes, created_by)
-    VALUES (${data.memberId}, ${data.method}, ${entryTime}, ${entryDate}, ${data.notes ?? null}, ${data.createdBy ?? null})
+    VALUES (${data.memberId}, ${data.method}, ${entryTime}, ${entryDay}::date, ${data.notes ?? null}, ${data.createdBy ?? null})
     RETURNING id
   `;
   const [entry] = await sql<EntryRow[]>`
@@ -202,22 +196,11 @@ export async function deleteEntry(id: number) {
 }
 
 export async function getExistingEntryForDate(memberId: number, dateOverride?: string) {
-  let dayStart: Date;
-  if (dateOverride) {
-    const [y, m, d] = dateOverride.split('-').map(Number);
-    dayStart = new Date(y, m - 1, d, 0, 0, 0, 0);
-  } else {
-    dayStart = new Date();
-    dayStart.setHours(0, 0, 0, 0);
-  }
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
+  const day = parseDay(dateOverride) ?? toDayString(new Date());
 
   const [entry] = await sql<EntryRow[]>`
     ${ENTRY_SELECT}
-    WHERE e.member_id = ${memberId}
-      AND e.entry_time >= ${dayStart}
-      AND e.entry_time < ${dayEnd}
+    WHERE e.member_id = ${memberId} AND e.entry_date = ${day}::date
     LIMIT 1
   `;
   return entry ? mapEntry(entry) : null;

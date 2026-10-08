@@ -1,4 +1,5 @@
 import sql from '../lib/db.js';
+import { toDayString } from '../lib/dateParams.js';
 
 interface EntryWithMember {
   id: number;
@@ -11,28 +12,22 @@ interface EntryWithMember {
   first_name: string;
 }
 
-export async function getDashboard() {
-  const now = new Date();
-  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
-
-  const weekStart = new Date(todayStart);
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay() + (weekStart.getDay() === 0 ? -6 : 1));
-
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
+// "day" is the date of the client's browser (yyyy-MM-dd); the server clock is only the fallback
+export async function getDashboard(day: string = toDayString(new Date())) {
   const [today, week, month, trialActive, newCards] = await Promise.all([
     sql<[{ count: string; scans: string; manual: string }]>`
       SELECT COUNT(*) AS count,
              COUNT(*) FILTER (WHERE method = 'scan') AS scans,
              COUNT(*) FILTER (WHERE method = 'manual') AS manual
-      FROM entries WHERE entry_time >= ${todayStart} AND entry_time <= ${todayEnd}
+      FROM entries WHERE entry_date = ${day}::date
     `,
     sql<[{ count: string }]>`
-      SELECT COUNT(*) AS count FROM entries WHERE entry_time >= ${weekStart}
+      SELECT COUNT(*) AS count FROM entries
+      WHERE entry_date >= date_trunc('week', ${day}::date)::date
     `,
     sql<[{ count: string }]>`
-      SELECT COUNT(*) AS count FROM entries WHERE entry_time >= ${monthStart}
+      SELECT COUNT(*) AS count FROM entries
+      WHERE entry_date >= date_trunc('month', ${day}::date)::date
     `,
     sql<[{ count: string }]>`
       SELECT COUNT(*) AS count FROM members WHERE is_trial = true

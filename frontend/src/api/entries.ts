@@ -1,9 +1,20 @@
 import client from './client';
 import type { EntryResult, TodayCountResult, EntriesResult } from '../types';
+import { todayIso } from '../utils/dateUtils';
+
+// The browser decides what "today" and "now" are; the server clock can drift (e.g. Docker Desktop after standby)
+function clientTime() {
+  return { entryDate: todayIso(), clientNow: new Date().toISOString() };
+}
+
+// An explicit entryDate: undefined (today) must not overwrite the browser's date
+function definedOnly<T extends object>(data: T): Partial<T> {
+  return Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)) as Partial<T>;
+}
 
 export const entriesApi = {
   getTodayCount: () =>
-    client.get<TodayCountResult>('/entries/today/count').then((r) => r.data),
+    client.get<TodayCountResult>('/entries/today/count', { params: { date: todayIso() } }).then((r) => r.data),
 
   list: (params?: {
     date?: string;
@@ -23,7 +34,7 @@ export const entriesApi = {
     method: 'scan' | 'manual';
     notes?: string;
     entryDate?: string;
-  }) => client.post<EntryResult>('/entries', data).then((r) => r.data),
+  }) => client.post<EntryResult>('/entries', { ...clientTime(), ...definedOnly(data) }).then((r) => r.data),
 
   updateNotes: (id: number, notes: string | null) =>
     client.patch<import('../types').Entry>(`/entries/${id}/notes`, { notes }).then((r) => r.data),
@@ -31,5 +42,5 @@ export const entriesApi = {
   delete: (id: number) => client.delete(`/entries/${id}`),
 
   scan: (data: { qrCode: string; entryDate?: string }) =>
-    client.post<EntryResult>('/scan', data).then((r) => r.data),
+    client.post<EntryResult>('/scan', { ...clientTime(), ...definedOnly(data) }).then((r) => r.data),
 };

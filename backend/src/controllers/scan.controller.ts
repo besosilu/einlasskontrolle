@@ -1,10 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import { findMemberByQrCode } from '../services/scan.service.js';
 import * as entriesService from '../services/entries.service.js';
+import { parseClientNow } from '../lib/dateParams.js';
 
 export async function scan(req: Request, res: Response, next: NextFunction) {
   try {
-    const { qrCode, entryDate } = req.body as { qrCode: string; entryDate?: string };
+    const { qrCode, entryDate, clientNow } = req.body as { qrCode: string; entryDate?: string; clientNow?: string };
 
     if (!qrCode?.trim()) {
       return res.status(400).json({ error: 'QR-Code darf nicht leer sein' });
@@ -40,6 +41,7 @@ export async function scan(req: Request, res: Response, next: NextFunction) {
       memberId: member.id,
       method: 'scan',
       entryDateOverride: entryDate,
+      clientNow: parseClientNow(clientNow),
     });
 
     res.status(201).json({

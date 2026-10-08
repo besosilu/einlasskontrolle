@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { QrCode, CheckCircle, XCircle } from 'lucide-react';
 import { format, isToday, isFuture } from 'date-fns';
@@ -24,7 +24,24 @@ export function ScannerPage() {
   const [pendingResult, setPendingResult] = useState<EntryResult | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
+  const [followToday, setFollowToday] = useState(true);
   const queryClient = useQueryClient();
+
+  // The gate PC stays on this page all day: roll over to the new day at midnight (browser clock)
+  useEffect(() => {
+    if (!followToday) return;
+    const timer = setInterval(() => {
+      const now = new Date();
+      setSelectedDate((current) => (isToday(current) ? current : now));
+      setCalendarMonth((current) => (isToday(current) ? current : now));
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [followToday]);
+
+  function handleSelectDate(date: Date) {
+    setSelectedDate(date);
+    setFollowToday(isToday(date));
+  }
 
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
   const isSelectedToday = isToday(selectedDate);
@@ -142,10 +159,10 @@ export function ScannerPage() {
           <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
             <MiniCalendar
               selectedDate={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={handleSelectDate}
               currentMonth={calendarMonth}
               onMonthChange={setCalendarMonth}
-              onToday={() => { setSelectedDate(new Date()); setCalendarMonth(new Date()); }}
+              onToday={() => { handleSelectDate(new Date()); setCalendarMonth(new Date()); }}
             />
           </div>
 
