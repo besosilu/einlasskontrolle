@@ -17,6 +17,6 @@ export const membersApi = {
   update: (id: number, data: { lastName?: string; firstName?: string; memberNumber?: string }) =>
     client.put<Member>(`/members/${id}`, data).then((r) => r.data),
 
-  updateFlags: (id: number, data: { needsNewCard?: boolean; isTrainer?: boolean; isTrial?: boolean; trialRegistrationDate?: string | null }) =>
+  updateFlags: (id: number, data: { needsNewCard?: boolean; isTrainer?: boolean; isTrial?: boolean; isPreSwim?: boolean; trialRegistrationDate?: string | null }) =>
     client.patch<Member>(`/members/${id}/flags`, data).then((r) => r.data),
 };

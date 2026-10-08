@@ -22,6 +22,7 @@ interface EntryRow {
   needs_new_card: boolean;
   is_trainer: boolean;
   is_trial: boolean;
+  is_preswim: boolean;
   trial_registration_date: Date | null;
   created_at: Date;
   updated_at: Date;
@@ -45,6 +46,7 @@ function mapEntry(r: EntryRow) {
       needsNewCard: r.needs_new_card,
       isTrainer: r.is_trainer,
       isTrial: r.is_trial,
+      isPreSwim: r.is_preswim,
       trialRegistrationDate: r.trial_registration_date ?? null,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
@@ -56,7 +58,7 @@ const ENTRY_SELECT = sql`
   SELECT
     e.id, e.member_id, e.entry_time, e.entry_date, e.method, e.notes, e.created_by,
     m.id AS m_id, m.member_number, m.last_name, m.first_name, m.source,
-    m.needs_new_card, m.is_trainer, m.is_trial, m.trial_registration_date,
+    m.needs_new_card, m.is_trainer, m.is_trial, m.is_preswim, m.trial_registration_date,
     m.created_at, m.updated_at
   FROM entries e
   JOIN members m ON m.id = e.member_id
@@ -206,7 +208,7 @@ export async function getExistingEntryForDate(memberId: number, dateOverride?: s
   return entry ? mapEntry(entry) : null;
 }
 
-export type MemberExportKind = 'new-card' | 'trial';
+export type MemberExportKind = 'new-card' | 'trial' | 'pre-swim';
 
 function csvField(value: string | null): string {
   const v = value ?? '';
@@ -215,7 +217,7 @@ function csvField(value: string | null): string {
 
 // Members with an entry on the given day who currently have the flag, as "Mitgliedsnummer;Name;Vorname"
 export async function exportMembersForDay(day: string, kind: MemberExportKind): Promise<{ csv: string; count: number }> {
-  const flag = kind === 'new-card' ? sql`m.needs_new_card` : sql`m.is_trial`;
+  const flag = kind === 'new-card' ? sql`m.needs_new_card` : kind === 'trial' ? sql`m.is_trial` : sql`m.is_preswim`;
   const rows = await sql<{ member_number: string | null; last_name: string; first_name: string }[]>`
     SELECT DISTINCT m.member_number, m.last_name, m.first_name
     FROM entries e

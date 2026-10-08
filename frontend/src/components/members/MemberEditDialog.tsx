@@ -26,6 +26,7 @@ export function MemberEditDialog({ member, onClose }: MemberEditDialogProps) {
   const [needsNewCard, setNeedsNewCard] = useState(false);
   const [isTrainer, setIsTrainer] = useState(false);
   const [isTrial, setIsTrial] = useState(false);
+  const [isPreSwim, setIsPreSwim] = useState(false);
   const [trialRegistrationDate, setTrialRegistrationDate] = useState('');
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export function MemberEditDialog({ member, onClose }: MemberEditDialogProps) {
     setNeedsNewCard(member.needsNewCard);
     setIsTrainer(member.isTrainer);
     setIsTrial(member.isTrial);
+    setIsPreSwim(member.isPreSwim);
     setTrialRegistrationDate(member.trialRegistrationDate ?? '');
   }, [member]);
 
@@ -51,6 +53,7 @@ export function MemberEditDialog({ member, onClose }: MemberEditDialogProps) {
         needsNewCard,
         isTrainer,
         isTrial,
+        isPreSwim,
         trialRegistrationDate: isTrial ? trialRegistrationDate || null : null,
       });
     },
@@ -103,6 +106,15 @@ export function MemberEditDialog({ member, onClose }: MemberEditDialogProps) {
               className="rounded border-slate-300"
             />
             Schnupperer (Trial)
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={isPreSwim}
+              onChange={(e) => setIsPreSwim(e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            Vorschwimmen (noch kein Mitglied)
           </label>
           {isTrial && (
             <div className="pl-6">

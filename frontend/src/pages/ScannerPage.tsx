@@ -25,7 +25,7 @@ export function ScannerPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [followToday, setFollowToday] = useState(true);
-  const [exporting, setExporting] = useState<'new-card' | 'trial' | null>(null);
+  const [exporting, setExporting] = useState<'new-card' | 'trial' | 'pre-swim' | null>(null);
   const queryClient = useQueryClient();
 
   // The gate PC stays on this page all day: roll over to the new day at midnight (browser clock)
@@ -39,7 +39,7 @@ export function ScannerPage() {
     return () => clearInterval(timer);
   }, [followToday]);
 
-  async function handleExport(type: 'new-card' | 'trial') {
+  async function handleExport(type: 'new-card' | 'trial' | 'pre-swim') {
     setExporting(type);
     try {
       const { blob, filename } = await entriesApi.exportMembers(selectedDateStr, type);
@@ -213,6 +213,14 @@ export function ScannerPage() {
                   className="inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2 py-1 text-xs font-medium text-teal-700 transition-colors hover:bg-teal-100 disabled:opacity-50"
                 >
                   <Download className="h-3.5 w-3.5" />Schnupper
+                </button>
+                <button
+                  onClick={() => handleExport('pre-swim')}
+                  disabled={exporting !== null}
+                  title="Vorschwimmen-Kandidaten dieses Tages als CSV exportieren"
+                  className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-medium text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50"
+                >
+                  <Download className="h-3.5 w-3.5" />Vorschwimmen
                 </button>
               </div>
             </div>

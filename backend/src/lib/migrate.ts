@@ -137,6 +137,13 @@ export async function runMigrations() {
       `,
     },
     {
+      // Pre-swim candidates are not members yet; they are tracked by name only
+      name: '009_preswim_flag',
+      sql: `
+        ALTER TABLE members ADD COLUMN IF NOT EXISTS is_preswim BOOLEAN NOT NULL DEFAULT false;
+      `,
+    },
+    {
       // NULL for imports made before this counter existed
       name: '008_import_entries_created',
       sql: `

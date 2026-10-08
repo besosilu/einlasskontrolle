@@ -45,11 +45,12 @@ export function EntryList({ date }: EntryListProps) {
   const newCardCount = entries.filter((e) => e.member.needsNewCard).length;
   const manualCount = entries.filter((e) => e.method === 'manual').length;
   const trialCount = entries.filter((e) => e.member.isTrial).length;
+  const preSwimCount = entries.filter((e) => e.member.isPreSwim).length;
 
   return (
     <div className="space-y-3">
       {/* Summary bar */}
-      <div className="grid grid-cols-5 gap-1 rounded-lg bg-slate-50 p-2 text-center text-xs">
+      <div className="grid grid-cols-6 gap-1 rounded-lg bg-slate-50 p-2 text-center text-xs">
         <div>
           <p className="font-semibold text-slate-700">{data?.total ?? entries.length}</p>
           <p className="text-slate-400">Gesamt</p>
@@ -69,6 +70,10 @@ export function EntryList({ date }: EntryListProps) {
         <div>
           <p className="font-semibold text-teal-600">{trialCount}</p>
           <p className="text-slate-400">Schnupper</p>
+        </div>
+        <div>
+          <p className="font-semibold text-sky-600">{preSwimCount}</p>
+          <p className="text-slate-400">Vorschw.</p>
         </div>
       </div>
 

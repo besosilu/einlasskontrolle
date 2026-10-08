@@ -8,6 +8,7 @@ export interface Member {
   needsNewCardSince: string | null;
   isTrainer: boolean;
   isTrial: boolean;
+  isPreSwim: boolean;
   trialRegistrationDate: string | null;
   createdAt: string;
 }

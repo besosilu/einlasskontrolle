@@ -43,12 +43,13 @@ interface MemberRow {
   needs_new_card: boolean;
   is_trainer: boolean;
   is_trial: boolean;
+  is_preswim: boolean;
   trial_registration_date: Date | null;
   created_at: Date;
   updated_at: Date;
 }
 
-const MEMBER_COLS = `id, member_number, last_name, first_name, source, needs_new_card, is_trainer, is_trial, trial_registration_date, created_at, updated_at`;
+const MEMBER_COLS = `id, member_number, last_name, first_name, source, needs_new_card, is_trainer, is_trial, is_preswim, trial_registration_date, created_at, updated_at`;
 
 function mapMember(m: MemberRow) {
   return {
@@ -60,6 +61,7 @@ function mapMember(m: MemberRow) {
     needsNewCard: m.needs_new_card,
     isTrainer: m.is_trainer,
     isTrial: m.is_trial,
+    isPreSwim: m.is_preswim,
     trialRegistrationDate: m.trial_registration_date ?? null,
     createdAt: m.created_at,
     updatedAt: m.updated_at,

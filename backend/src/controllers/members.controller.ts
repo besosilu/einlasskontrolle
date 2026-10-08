@@ -65,16 +65,18 @@ export async function update(req: Request, res: Response, next: NextFunction) {
 
 export async function updateFlags(req: Request, res: Response, next: NextFunction) {
   try {
-    const { needsNewCard, isTrainer, isTrial, trialRegistrationDate } = req.body as {
+    const { needsNewCard, isTrainer, isTrial, isPreSwim, trialRegistrationDate } = req.body as {
       needsNewCard?: boolean;
       isTrainer?: boolean;
       isTrial?: boolean;
+      isPreSwim?: boolean;
       trialRegistrationDate?: string | null;
     };
     const member = await membersService.updateMemberFlags(Number(req.params['id']), {
       needsNewCard,
       isTrainer,
       isTrial,
+      isPreSwim,
       trialRegistrationDate,
     });
     res.json(member);

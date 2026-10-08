@@ -26,7 +26,7 @@ export const entriesApi = {
     offset?: number;
   }) => client.get<EntriesResult>('/entries', { params }).then((r) => r.data),
 
-  exportMembers: (date: string, type: 'new-card' | 'trial') =>
+  exportMembers: (date: string, type: 'new-card' | 'trial' | 'pre-swim') =>
     client
       .get<Blob>('/entries/export', { params: { date, type }, responseType: 'blob' })
       .then((r) => ({

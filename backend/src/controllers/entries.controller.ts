@@ -134,15 +134,15 @@ export async function remove(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-const EXPORT_FILENAMES = { 'new-card': 'neuer-ausweis', trial: 'schnupper-training' } as const;
+const EXPORT_FILENAMES = { 'new-card': 'neuer-ausweis', trial: 'schnupper-training', 'pre-swim': 'vorschwimmen' } as const;
 
 export async function exportMembers(req: Request, res: Response, next: NextFunction) {
   try {
     const day = parseDay(req.query['date']);
     const kind = req.query['type'] as string;
     if (!day) return res.status(400).json({ error: 'Datum (yyyy-MM-dd) erforderlich' });
-    if (kind !== 'new-card' && kind !== 'trial') {
-      return res.status(400).json({ error: 'type muss "new-card" oder "trial" sein' });
+    if (kind !== 'new-card' && kind !== 'trial' && kind !== 'pre-swim') {
+      return res.status(400).json({ error: 'type muss "new-card", "trial" oder "pre-swim" sein' });
     }
 
     const { csv } = await entriesService.exportMembersForDay(day, kind);

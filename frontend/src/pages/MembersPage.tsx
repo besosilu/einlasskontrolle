@@ -111,6 +111,7 @@ function MemberRow({ member, onEdit }: { member: Member; onEdit: () => void }) {
           {member.needsNewCard && <Badge variant="warning">Neue Karte</Badge>}
           {member.isTrainer && <Badge variant="info">Trainer</Badge>}
           {member.isTrial && <Badge variant="default">Schnupperer</Badge>}
+          {member.isPreSwim && <Badge variant="info">Vorschwimmen</Badge>}
         </div>
       </td>
       <td className="px-4 py-3">

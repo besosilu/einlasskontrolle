@@ -23,6 +23,7 @@ export function ManualEntryForm({ onEntryCreated, entryDate }: ManualEntryFormPr
   const [firstName, setFirstName] = useState('');
   const [pendingWarning, setPendingWarning] = useState<Warning | null>(null);
   const [pendingResult, setPendingResult] = useState<EntryResult | null>(null);
+  const [isPreSwim, setIsPreSwim] = useState(false);
 
   const queryClient = useQueryClient();
   const resolvedDateStr = entryDate ?? format(new Date(), 'yyyy-MM-dd');
@@ -33,7 +34,14 @@ export function ManualEntryForm({ onEntryCreated, entryDate }: ManualEntryFormPr
   }
 
   const mutation = useMutation({
-    mutationFn: entriesApi.create,
+    mutationFn: async (data: Parameters<typeof entriesApi.create>[0]) => {
+      const result = await entriesApi.create(data);
+      // Pre-swim candidates are not members yet: keep their name and flag them for the export
+      if (isPreSwim && !result.alreadyCheckedIn) {
+        await membersApi.updateFlags(result.member.id, { isPreSwim: true });
+      }
+      return result;
+    },
     onSuccess: (result) => {
       if (result.warnings.length > 0) {
         setPendingWarning(result.warnings[0]);
@@ -55,6 +63,7 @@ export function ManualEntryForm({ onEntryCreated, entryDate }: ManualEntryFormPr
     setSelectedMember(null);
     setLastName('');
     setFirstName('');
+    setIsPreSwim(false);
     onEntryCreated();
   }
 
@@ -105,6 +114,16 @@ export function ManualEntryForm({ onEntryCreated, entryDate }: ManualEntryFormPr
             className="flex-1"
           />
         </div>
+
+        <label className="flex items-center gap-2 text-xs text-slate-600">
+          <input
+            type="checkbox"
+            checked={isPreSwim}
+            onChange={(e) => setIsPreSwim(e.target.checked)}
+            className="rounded border-slate-300"
+          />
+          Vorschwimmen (noch kein Mitglied)
+        </label>
 
         <Button
           type="submit"

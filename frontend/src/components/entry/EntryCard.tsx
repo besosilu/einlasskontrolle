@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2, CreditCard, GraduationCap, FlaskConical, MessageSquare } from 'lucide-react';
+import { Trash2, CreditCard, GraduationCap, FlaskConical, MessageSquare, Waves } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { entriesApi } from '@/api/entries';
 import { membersApi } from '@/api/members';
@@ -30,7 +30,7 @@ export function EntryCard({ entry }: EntryCardProps) {
   });
 
   const flagMutation = useMutation({
-    mutationFn: (data: { needsNewCard?: boolean; isTrainer?: boolean; isTrial?: boolean; trialRegistrationDate?: string | null }) =>
+    mutationFn: (data: { needsNewCard?: boolean; isTrainer?: boolean; isTrial?: boolean; isPreSwim?: boolean; trialRegistrationDate?: string | null }) =>
       membersApi.updateFlags(entry.member.id, data),
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ['entries', entryDateStr] });
@@ -38,7 +38,7 @@ export function EntryCard({ entry }: EntryCardProps) {
     onError: () => showToast('error', 'Fehler beim Speichern.'),
   });
 
-  const { needsNewCard, isTrainer, isTrial } = entry.member;
+  const { needsNewCard, isTrainer, isTrial, isPreSwim } = entry.member;
   const hasNotes = !!entry.notes;
 
   return (
@@ -60,6 +60,11 @@ export function EntryCard({ entry }: EntryCardProps) {
             {isTrial && (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-teal-100 px-1.5 py-0.5 text-xs font-medium text-teal-700">
                 <FlaskConical className="h-3 w-3" />Schnupper
+              </span>
+            )}
+            {isPreSwim && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-100 px-1.5 py-0.5 text-xs font-medium text-sky-700">
+                <Waves className="h-3 w-3" />Vorschwimmen
               </span>
             )}
             {needsNewCard && (
@@ -108,6 +113,15 @@ export function EntryCard({ entry }: EntryCardProps) {
             className={cn('rounded p-1 transition-colors', isTrial ? 'text-teal-500 hover:bg-teal-100' : 'text-slate-300 hover:bg-teal-50 hover:text-teal-400')}
           >
             <FlaskConical className="h-4 w-4" />
+          </button>
+
+          <button
+            onClick={() => flagMutation.mutate({ isPreSwim: !isPreSwim })}
+            disabled={flagMutation.isPending}
+            title={isPreSwim ? 'Vorschwimmen-Kennzeichen entfernen' : 'Als Vorschwimmen markieren (noch kein Mitglied)'}
+            className={cn('rounded p-1 transition-colors', isPreSwim ? 'text-sky-500 hover:bg-sky-100' : 'text-slate-300 hover:bg-sky-50 hover:text-sky-400')}
+          >
+            <Waves className="h-4 w-4" />
           </button>
 
           <button
