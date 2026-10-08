@@ -205,3 +205,24 @@ export async function getExistingEntryForDate(memberId: number, dateOverride?: s
   `;
   return entry ? mapEntry(entry) : null;
 }
+
+export type MemberExportKind = 'new-card' | 'trial';
+
+function csvField(value: string | null): string {
+  const v = value ?? '';
+  return /[;"\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+// Members with an entry on the given day who currently have the flag, as "Mitgliedsnummer;Name;Vorname"
+export async function exportMembersForDay(day: string, kind: MemberExportKind): Promise<{ csv: string; count: number }> {
+  const flag = kind === 'new-card' ? sql`m.needs_new_card` : sql`m.is_trial`;
+  const rows = await sql<{ member_number: string | null; last_name: string; first_name: string }[]>`
+    SELECT DISTINCT m.member_number, m.last_name, m.first_name
+    FROM entries e
+    JOIN members m ON m.id = e.member_id
+    WHERE e.entry_date = ${day}::date AND ${flag}
+    ORDER BY m.last_name, m.first_name
+  `;
+  const lines = ['Mitgliedsnummer;Name;Vorname', ...rows.map((r) => [r.member_number, r.last_name, r.first_name].map(csvField).join(';'))];
+  return { csv: lines.join('\r\n') + '\r\n', count: rows.length };
+}

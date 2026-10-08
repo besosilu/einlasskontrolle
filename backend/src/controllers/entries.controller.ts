@@ -133,3 +133,24 @@ export async function remove(req: Request, res: Response, next: NextFunction) {
     next(err);
   }
 }
+
+const EXPORT_FILENAMES = { 'new-card': 'neuer-ausweis', trial: 'schnupper-training' } as const;
+
+export async function exportMembers(req: Request, res: Response, next: NextFunction) {
+  try {
+    const day = parseDay(req.query['date']);
+    const kind = req.query['type'] as string;
+    if (!day) return res.status(400).json({ error: 'Datum (yyyy-MM-dd) erforderlich' });
+    if (kind !== 'new-card' && kind !== 'trial') {
+      return res.status(400).json({ error: 'type muss "new-card" oder "trial" sein' });
+    }
+
+    const { csv } = await entriesService.exportMembersForDay(day, kind);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${EXPORT_FILENAMES[kind]}_${day}.csv"`);
+    // BOM so Excel opens umlauts correctly; the importer strips it again
+    res.send('﻿' + csv);
+  } catch (err) {
+    next(err);
+  }
+}

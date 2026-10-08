@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { QrCode, CheckCircle, XCircle } from 'lucide-react';
+import { QrCode, CheckCircle, XCircle, Download } from 'lucide-react';
 import { format, isToday, isFuture } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { entriesApi } from '@/api/entries';
@@ -25,6 +25,7 @@ export function ScannerPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [followToday, setFollowToday] = useState(true);
+  const [exporting, setExporting] = useState<'new-card' | 'trial' | null>(null);
   const queryClient = useQueryClient();
 
   // The gate PC stays on this page all day: roll over to the new day at midnight (browser clock)
@@ -37,6 +38,28 @@ export function ScannerPage() {
     }, 30_000);
     return () => clearInterval(timer);
   }, [followToday]);
+
+  async function handleExport(type: 'new-card' | 'trial') {
+    setExporting(type);
+    try {
+      const { blob, filename } = await entriesApi.exportMembers(selectedDateStr, type);
+      // Header line only: nothing to export for this day
+      if ((await blob.text()).trim().split(/\r?\n/).length <= 1) {
+        showToast('info', `Keine Einträge für den ${format(selectedDate, 'dd.MM.yyyy')}.`);
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast('error', 'Export fehlgeschlagen.');
+    } finally {
+      setExporting(null);
+    }
+  }
 
   function handleSelectDate(date: Date) {
     setSelectedDate(date);
@@ -168,12 +191,30 @@ export function ScannerPage() {
 
           {/* Liste */}
           <div className="flex-1 p-5">
-            <div className="mb-3">
+            <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-slate-700">
                 {isToday(selectedDate)
                   ? 'Einlässe heute'
                   : format(selectedDate, 'dd. MMMM yyyy', { locale: de })}
               </h2>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => handleExport('new-card')}
+                  disabled={exporting !== null}
+                  title="Mitglieder mit „Neuer Ausweis“ dieses Tages als CSV exportieren"
+                  className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                >
+                  <Download className="h-3.5 w-3.5" />Ausweis
+                </button>
+                <button
+                  onClick={() => handleExport('trial')}
+                  disabled={exporting !== null}
+                  title="Mitglieder im Schnupper-Training dieses Tages als CSV exportieren"
+                  className="inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2 py-1 text-xs font-medium text-teal-700 transition-colors hover:bg-teal-100 disabled:opacity-50"
+                >
+                  <Download className="h-3.5 w-3.5" />Schnupper
+                </button>
+              </div>
             </div>
             <EntryList date={selectedDate} />
           </div>

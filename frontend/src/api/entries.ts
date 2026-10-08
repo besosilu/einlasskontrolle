@@ -26,6 +26,14 @@ export const entriesApi = {
     offset?: number;
   }) => client.get<EntriesResult>('/entries', { params }).then((r) => r.data),
 
+  exportMembers: (date: string, type: 'new-card' | 'trial') =>
+    client
+      .get<Blob>('/entries/export', { params: { date, type }, responseType: 'blob' })
+      .then((r) => ({
+        blob: r.data,
+        filename: /filename="([^"]+)"/.exec(r.headers['content-disposition'] ?? '')?.[1] ?? `export_${date}.csv`,
+      })),
+
   create: (data: {
     memberId?: number;
     lastName?: string;
