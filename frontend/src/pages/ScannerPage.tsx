@@ -10,11 +10,10 @@ import { EntryList } from '@/components/entry/EntryList';
 import { MiniCalendar } from '@/components/entry/MiniCalendar';
 import { ManualWarningDialog } from '@/components/entry/ManualWarningDialog';
 import { TrialWarningDialog } from '@/components/entry/TrialWarningDialog';
-import { NotesDialog } from '@/components/entry/NotesDialog';
 import { DashboardCards } from '@/components/dashboard/DashboardCards';
 import { showToast } from '@/components/ui/Toast';
 import { membersApi } from '@/api/members';
-import type { Warning, EntryResult, Entry } from '@/types';
+import type { Warning, EntryResult } from '@/types';
 import { cn } from '@/utils/cn';
 
 type ScanFeedback = { type: 'success' | 'error' | 'warning'; name?: string } | null;
@@ -23,7 +22,6 @@ export function ScannerPage() {
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback>(null);
   const [pendingWarning, setPendingWarning] = useState<Warning | null>(null);
   const [pendingResult, setPendingResult] = useState<EntryResult | null>(null);
-  const [notesEntry, setNotesEntry] = useState<Entry | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const queryClient = useQueryClient();
@@ -53,7 +51,6 @@ export function ScannerPage() {
       queryClient.refetchQueries({ queryKey: ['entries', selectedDateStr] });
       queryClient.invalidateQueries({ queryKey: ['today-count'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      setNotesEntry(result.entry);
       setTimeout(() => setScanFeedback(null), 3000);
     },
     onError: () => {
@@ -207,17 +204,6 @@ export function ScannerPage() {
           setTimeout(() => setScanFeedback(null), 2000);
         }}
       />
-
-      {notesEntry && (
-        <NotesDialog
-          entryId={notesEntry.id}
-          entryDateStr={notesEntry.entryDate.slice(0, 10)}
-          memberName={`${notesEntry.member.firstName} ${notesEntry.member.lastName}`}
-          currentNotes={notesEntry.notes}
-          open={!!notesEntry}
-          onClose={() => setNotesEntry(null)}
-        />
-      )}
     </div>
   );
 }

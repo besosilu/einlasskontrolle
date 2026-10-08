@@ -16,7 +16,7 @@ RUN npm run build && npm prune --omit=dev
 
 # ---- Runtime: Postgres + Backend (liefert Frontend mit aus) in einem Image ----
 FROM node:22-alpine
-RUN apk add --no-cache postgresql16 su-exec tini \
+RUN apk add --no-cache postgresql16 su-exec tini tzdata \
     && mkdir -p /var/lib/postgresql/data /run/postgresql \
     && chown -R postgres:postgres /var/lib/postgresql /run/postgresql
 
@@ -31,6 +31,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 ENV PGDATA=/var/lib/postgresql/data \
     POSTGRES_DB=einlass_db \
     POSTGRES_USER=einlass_user \
+    TZ=Europe/Berlin \
     NODE_ENV=production \
     PORT=3001
 
