@@ -7,6 +7,7 @@ import { authApi } from '@/api/auth';
 import { useAuth } from '@/context/AuthContext';
 import { formatDate } from '@/utils/dateUtils';
 import { Button } from '@/components/ui/Button';
+import { ServerClock } from './ServerClock';
 import { Input } from '@/components/ui/Input';
 import { showToast } from '@/components/ui/Toast';
 
@@ -53,6 +54,7 @@ export function Header() {
         <p className="text-sm text-slate-500">{formatDate(new Date())}</p>
 
         <div className="flex items-center gap-3">
+          <ServerClock />
           <div className="flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5">
             <Users className="h-4 w-4 text-blue-600" />
             <span className="text-sm font-semibold text-blue-700">

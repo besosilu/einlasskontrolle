@@ -10,6 +10,7 @@ import importRoutes from './routes/import.routes.js';
 import pricesRoutes from './routes/prices.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import usersRoutes from './routes/users.routes.js';
+import systemRoutes from './routes/system.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requireAuth, requireAdmin } from './middleware/requireAuth.js';
 import { runMigrations } from './lib/migrate.js';
@@ -33,6 +34,7 @@ app.use('/api/v1/stats', requireAuth, statsRoutes);
 app.use('/api/v1/import', requireAuth, importRoutes);
 app.use('/api/v1/prices', requireAuth, pricesRoutes);
 app.use('/api/v1/users', requireAdmin, usersRoutes);
+app.use('/api/v1/system', requireAuth, systemRoutes);
 
 const frontendDist = process.env['FRONTEND_DIST_PATH'] ?? path.join(__dirname, '../public');
 app.use(express.static(frontendDist));
