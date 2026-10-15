@@ -43,6 +43,7 @@ export function ManualEntryForm({ onEntryCreated, entryDate }: ManualEntryFormPr
       return result;
     },
     onSuccess: (result) => {
+      (document.activeElement as HTMLElement | null)?.blur();
       if (result.warnings.length > 0) {
         setPendingWarning(result.warnings[0]);
         setPendingResult(result);
@@ -52,6 +53,7 @@ export function ManualEntryForm({ onEntryCreated, entryDate }: ManualEntryFormPr
       }
     },
     onError: () => {
+      (document.activeElement as HTMLElement | null)?.blur();
       showToast('error', 'Fehler beim Einlassen. Bitte erneut versuchen.');
     },
   });
@@ -64,6 +66,8 @@ export function ManualEntryForm({ onEntryCreated, entryDate }: ManualEntryFormPr
     setLastName('');
     setFirstName('');
     setIsPreSwim(false);
+    // The USB scanner is ignored while a field has the focus, and a focused button would react to its Enter key
+    (document.activeElement as HTMLElement | null)?.blur();
     onEntryCreated();
   }
 

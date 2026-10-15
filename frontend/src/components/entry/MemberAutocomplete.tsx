@@ -6,7 +6,7 @@ import type { Member } from '@/types';
 
 interface MemberAutocompleteProps {
   onSelect: (member: Member) => void;
-  /** Called instead of onSelect when a suggestion is chosen with the Enter key; the input keeps focus. */
+  /** Called instead of onSelect when a suggestion is chosen with the Enter key; the input loses focus so scanning works again. */
   onEnterSelect?: (member: Member) => void;
   placeholder?: string;
 }
@@ -43,10 +43,11 @@ export function MemberAutocomplete({ onSelect, onEnterSelect, placeholder = 'Nam
       const member = suggestions[highlighted];
       if (!member) return;
       if (onEnterSelect) {
-        // Keep the focus so the next member can be searched right away
+        // Release the focus: the USB scanner is ignored while an input field has the focus
         onEnterSelect(member);
         setQuery('');
         setOpen(false);
+        inputRef.current?.blur();
       } else {
         handleSelect(member);
       }
