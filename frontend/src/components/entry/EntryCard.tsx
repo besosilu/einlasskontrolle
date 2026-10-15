@@ -44,12 +44,13 @@ export function EntryCard({ entry }: EntryCardProps) {
   return (
     <>
       <div className={cn(
-        'flex items-start gap-3 rounded-lg border px-4 py-3 transition-colors',
+        // Wraps: when the row is too narrow the actions move below the name instead of cutting it off
+        'flex flex-wrap items-start gap-x-3 gap-y-1 rounded-lg border px-4 py-3 transition-colors',
         needsNewCard ? 'border-amber-200 bg-amber-50' : 'border-slate-100 bg-white hover:border-slate-200',
       )}>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-[12rem] flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <p className="font-medium text-slate-800 truncate">
+            <p className="font-medium text-slate-800 break-words">
               {entry.member.lastName}, {entry.member.firstName}
             </p>
             {isTrainer && (
