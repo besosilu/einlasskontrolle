@@ -6,10 +6,12 @@ import type { Member } from '@/types';
 
 interface MemberAutocompleteProps {
   onSelect: (member: Member) => void;
+  /** Called instead of onSelect when a suggestion is chosen with the Enter key; the input keeps focus. */
+  onEnterSelect?: (member: Member) => void;
   placeholder?: string;
 }
 
-export function MemberAutocomplete({ onSelect, placeholder = 'Name oder Mitgliedsnummer...' }: MemberAutocompleteProps) {
+export function MemberAutocomplete({ onSelect, onEnterSelect, placeholder = 'Name oder Mitgliedsnummer...' }: MemberAutocompleteProps) {
   const { query, setQuery, suggestions, isFetching } = useMemberSearch();
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
@@ -38,7 +40,16 @@ export function MemberAutocomplete({ onSelect, placeholder = 'Name oder Mitglied
       setHighlighted((h) => Math.max(h - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (suggestions[highlighted]) handleSelect(suggestions[highlighted]);
+      const member = suggestions[highlighted];
+      if (!member) return;
+      if (onEnterSelect) {
+        // Keep the focus so the next member can be searched right away
+        onEnterSelect(member);
+        setQuery('');
+        setOpen(false);
+      } else {
+        handleSelect(member);
+      }
     } else if (e.key === 'Escape') {
       setOpen(false);
     }

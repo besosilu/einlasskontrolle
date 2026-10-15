@@ -73,6 +73,12 @@ export function ManualEntryForm({ onEntryCreated, entryDate }: ManualEntryFormPr
     setFirstName(member.firstName);
   }
 
+  // Enter on a search result adds the member right away
+  function handleEnterSelect(member: Member) {
+    if (mutation.isPending) return;
+    mutation.mutate({ memberId: member.id, method: 'manual' as const, entryDate });
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -97,6 +103,7 @@ export function ManualEntryForm({ onEntryCreated, entryDate }: ManualEntryFormPr
       <form onSubmit={handleSubmit} className="space-y-3">
         <MemberAutocomplete
           onSelect={handleSelectMember}
+          onEnterSelect={handleEnterSelect}
           placeholder="Mitglied suchen..."
         />
 
