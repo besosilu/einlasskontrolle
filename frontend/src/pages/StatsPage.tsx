@@ -7,10 +7,11 @@ import { MemberView } from '@/components/stats/MemberView';
 import { CalendarView } from '@/components/stats/CalendarView';
 import { NewCardView } from '@/components/stats/NewCardView';
 import { WorkloadChart } from '@/components/stats/WorkloadChart';
+import { StatsChat } from '@/components/stats/StatsChat';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
-type Tab = 'summary' | 'calendar' | 'by-day' | 'by-member' | 'new-card' | 'workload';
+type Tab = 'summary' | 'calendar' | 'by-day' | 'by-member' | 'new-card' | 'workload' | 'chat';
 
 export function StatsPage() {
   const [tab, setTab] = useState<Tab>('calendar');
@@ -28,6 +29,7 @@ export function StatsPage() {
     { key: 'by-member', label: 'Pro Mitglied' },
     { key: 'new-card', label: 'Neuer Ausweis' },
     { key: 'workload', label: 'Auslastung' },
+    { key: 'chat', label: 'Chat' },
   ];
 
   return (
@@ -97,6 +99,7 @@ export function StatsPage() {
           <WorkloadChart />
         </div>
       )}
+      {tab === 'chat' && <StatsChat />}
     </div>
   );
 }

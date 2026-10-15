@@ -94,6 +94,28 @@ export interface MemberStats {
   visitDates: { date: string; method: 'scan' | 'manual'; entryTime: string; entryId: number }[];
 }
 
+export interface ChatDataset {
+  title: string;
+  columns: string[];
+  rows: (string | number)[][];
+  chart: 'bar' | 'line' | 'none';
+}
+
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatResult {
+  answer: string;
+  datasets: ChatDataset[];
+}
+
+export interface ChatStatus {
+  configured: boolean;
+  model: string;
+}
+
 export interface Summary {
   totalEntries: number;
   uniqueMembers: number;

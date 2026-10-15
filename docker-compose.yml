@@ -28,6 +28,7 @@ services:
       PORT: 3001
       JWT_SECRET: "${JWT_SECRET:-einlass-secret-change-in-production}"
       APP_URL: "${APP_URL:-http://localhost}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
       ADMIN_EMAIL: "${ADMIN_EMAIL:-}"
       SMTP_HOST: "${SMTP_HOST:-}"
       SMTP_PORT: "${SMTP_PORT:-587}"

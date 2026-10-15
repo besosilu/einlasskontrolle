@@ -1,6 +1,6 @@
 # Plan: Chat mit den Statistiken
 
-**Status:** freigegeben, in Umsetzung
+**Status:** umgesetzt (ohne Live-Test mit API-Key)
 **Erstellt:** 2026-10-15
 
 ## Context

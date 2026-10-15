@@ -15,6 +15,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       APP_URL: ${APP_URL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}   # optional: aktiviert den Chat in den Statistiken
     volumes:
       - einlass_data:/var/lib/postgresql/data
 

@@ -11,6 +11,7 @@ Webapplikation zur Einlasskontrolle mit QR-Code-Handscanner und manueller Eingab
 - **Export** pro Tag (Neuer Ausweis, Schnupper-Training, Vorschwimmen) als CSV nach Vorschau
 - **CSV-Import** von Scan-Dateien (mehrere Dateien gleichzeitig)
 - **Mitgliederverwaltung**, Statistiken (Tag, Woche, Monat, Auslastung), Protokolle, Preisliste
+- **Chat in den Statistiken** (optional): Fragen zu den Besucherzahlen in normaler Sprache, beantwortet mit Tabellen und Diagrammen (siehe [KI-Auswertung](#ki-auswertung-chat-in-den-statistiken))
 - **Benutzerverwaltung** mit Registrierung, Freigabe durch Administratoren, Sperren und Passwort-Reset
 
 ## Starten
@@ -95,6 +96,20 @@ Mitgliedsnummer;Name;Vorname
 
 Die Ergebnisse (Eintritte erfasst, neue Mitglieder, aktualisiert, bereits erfasst, Fehler) stehen im Importdialog und im Import-Protokoll.
 
+## KI-Auswertung (Chat in den Statistiken)
+
+Im Reiter **Statistiken → Chat** lassen sich Auswertungen in normaler Sprache abfragen, z. B. „Vergleiche September und Oktober“ oder „Wie viele Schnupperer waren pro Monat da?“. Die Antwort kommt als kurzer Text plus Tabelle und Diagramm.
+
+**Einrichten (optional):**
+
+1. Bei https://console.anthropic.com einen API-Key anlegen (Abrechnung nach Nutzung; das Modell Haiku 4.5 kostet bei gelegentlichen Fragen nur wenige Cent).
+2. In die `.env` eintragen: `ANTHROPIC_API_KEY=sk-ant-...` (optional `STATS_CHAT_MODEL`, Standard `claude-haiku-4-5`).
+3. Container neu erzeugen: `docker compose up -d`.
+
+Ohne Key bleibt der Chat deaktiviert, der Reiter zeigt einen Hinweis; die übrige Anwendung ist nicht betroffen. Der Rechner braucht Internetzugang, rechnet aber nichts selbst; 8 GB RAM genügen.
+
+**Datenschutz:** Die KI ruft nur vorbereitete Auswertungen ab (Einlässe pro Tag, Woche, Monat, Wochentag oder Uhrzeit, verschiedene Personen, Besuchshäufigkeit, Neuanlagen, Bestand je Kennzeichen) und bekommt ausschließlich zusammengerechnete Zahlen. **Namen und Mitgliedsnummern verlassen den Rechner nicht.** Der eingetippte Fragetext geht allerdings an den Anbieter, deshalb keine Namen eingeben. Fragen nach einzelnen Personen werden nicht beantwortet. Die Kennzeichen (ÜL, Neuer Ausweis, Schnupper, Vorschwimmen) gelten so, wie sie aktuell gesetzt sind, nicht rückwirkend. Pro Benutzer sind 20 Fragen pro Minute erlaubt.
+
 ## Datum, Uhrzeit und Zeitzone
 
 - Datum und Uhrzeit eines Einlasses kommen vom **Browser** (Datum des Einlass-PCs). Der Server nutzt seine eigene Uhr nur, wenn nichts mitgeschickt wird.
@@ -143,5 +158,6 @@ Alle Routen unter `/api/v1`, außer Login und Registrierung mit Bearer-Token.
 | Mitglieder | `GET /members`, `GET /members/list`, `POST/PUT /members`, `PATCH /members/:id/flags` |
 | Import | `POST /import/members`, `GET /import/logs` |
 | Statistik | `GET /stats/dashboard?date=`, `/stats/workload`, `/stats/by-day`, `/stats/by-member/:id`, `/stats/summary`, `/stats/new-card` |
+| Chat | `GET /stats/chat/status`, `POST /stats/chat` (`messages[]`, `today`) |
 | System | `GET /system/time` |
 | Benutzer (Admin) | `GET /users`, Registrierungen freigeben oder ablehnen, sperren, löschen |

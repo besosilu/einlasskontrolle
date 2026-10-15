@@ -20,6 +20,14 @@ APP_URL=http://localhost:3001
 - `JWT_SECRET`: beliebiger langer Zufallsstring (wird zum Signieren der Login-Tokens genutzt).
 - `APP_URL`: unter welcher Adresse die App später erreichbar ist (wird u.a. für Links in E-Mails verwendet).
 
+Optional, für den Chat in den Statistiken (siehe [README](README.md#ki-auswertung-chat-in-den-statistiken)):
+
+```env
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+- `ANTHROPIC_API_KEY`: API-Key von https://console.anthropic.com. Ohne Key bleibt der Chat deaktiviert. Der Rechner braucht dafür Internetzugang. Es werden nur zusammengerechnete Zahlen, keine Namen übertragen.
+
 ## 2. Starten
 
 ```bash

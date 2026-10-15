@@ -9,5 +9,7 @@ router.get('/by-day', ctrl.byDay);
 router.get('/by-member/:id', ctrl.byMember);
 router.get('/summary', ctrl.summary);
 router.get('/new-card', ctrl.newCardStats);
+router.get('/chat/status', ctrl.chatStatus);
+router.post('/chat', ctrl.chat);
 
 export default router;

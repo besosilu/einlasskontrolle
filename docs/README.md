@@ -15,4 +15,4 @@
 
 | Plan | Status |
 |---|---|
-| [Chat mit den Statistiken](plans/2026-10-statistik-chat.md) | freigegeben, in Umsetzung |
+| [Chat mit den Statistiken](plans/2026-10-statistik-chat.md) | umgesetzt (Live-Test mit API-Key offen) |

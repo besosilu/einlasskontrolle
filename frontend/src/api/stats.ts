@@ -1,5 +1,5 @@
 import client from './client';
-import type { DayStats, MemberStats, Summary } from '../types';
+import type { ChatResult, ChatStatus, ChatTurn, DayStats, MemberStats, Summary } from '../types';
 import { todayIso } from '../utils/dateUtils';
 
 export interface NewCardStat {
@@ -44,4 +44,13 @@ export const statsApi = {
 
   newCard: () =>
     client.get<NewCardStat[]>('/stats/new-card').then((r) => r.data),
+
+  chatStatus: () =>
+    client.get<ChatStatus>('/stats/chat/status').then((r) => r.data),
+
+  // The browser's date is sent along so "last month" means the same as on the user's screen
+  chat: (messages: ChatTurn[]) =>
+    client
+      .post<ChatResult>('/stats/chat', { messages, today: todayIso() }, { timeout: 60_000 })
+      .then((r) => r.data),
 };
