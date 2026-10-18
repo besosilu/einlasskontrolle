@@ -169,3 +169,9 @@ export interface MonthlyReport {
   sizeBytes: number;
   createdAt: string;
 }
+
+export interface BackupFile {
+  filename: string;
+  sizeBytes: number;
+  createdAt: string;
+}

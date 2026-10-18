@@ -5,14 +5,15 @@ import { de } from 'date-fns/locale';
 import { importApi } from '@/api/import';
 import { entriesApi } from '@/api/entries';
 import { reportsApi } from '@/api/reports';
+import { backupApi } from '@/api/backup';
 import { formatDateTime } from '@/utils/dateUtils';
 import { showToast } from '@/components/ui/Toast';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Trash2, FileText, ScanLine, Landmark, Download, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Trash2, FileText, ScanLine, Landmark, Download, RefreshCw, Database } from 'lucide-react';
 import type { ImportLog, Entry } from '@/types';
 
-type Tab = 'import' | 'scans' | 'finanzamt';
+type Tab = 'import' | 'scans' | 'finanzamt' | 'backup';
 
 const PAGE_SIZE_IMPORT = 20;
 const PAGE_SIZE_SCANS = 50;
@@ -58,11 +59,24 @@ export function LogsPage() {
             Finanzamt
           </button>
         )}
+        {isAdmin && (
+          <button
+            onClick={() => setTab('backup')}
+            className={cn(
+              'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
+              tab === 'backup' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            )}
+          >
+            <Database className="h-4 w-4" />
+            Sicherung
+          </button>
+        )}
       </div>
 
       {tab === 'import' && <ImportLogTab />}
       {tab === 'scans' && <ScansLogTab />}
       {tab === 'finanzamt' && isAdmin && <FinanzamtTab />}
+      {tab === 'backup' && isAdmin && <BackupTab />}
     </div>
   );
 }
@@ -185,6 +199,90 @@ function FinanzamtTab() {
               </div>
               <button
                 onClick={() => download(r.filename)}
+                title="Herunterladen"
+                className="flex items-center gap-1.5 rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Backup-Sicherung Tab ────────────────────────────────────────────────────
+
+function BackupTab() {
+  const queryClient = useQueryClient();
+
+  const { data: backups = [], isLoading } = useQuery({
+    queryKey: ['backups'],
+    queryFn: backupApi.list,
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: () => backupApi.generate(),
+    onSuccess: () => {
+      showToast('success', 'Sicherung erzeugt.');
+      queryClient.invalidateQueries({ queryKey: ['backups'] });
+    },
+    onError: () => showToast('error', 'Sicherung konnte nicht erzeugt werden.'),
+  });
+
+  async function download(filename: string) {
+    try {
+      const { blob, filename: name } = await backupApi.download(filename);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast('error', 'Download fehlgeschlagen.');
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div>
+          <p className="text-sm font-semibold text-slate-700">Zentrale Backup-Sicherung (JSON)</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Strukturierter Datenexport (Mitglieder, Einträge) für den MCP-Import in eine zentrale Sicherungs-DB.
+            Kein Ersatz für reguläre <span className="font-mono">pg_dump</span>-Backups, nur manuell erzeugbar.
+          </p>
+        </div>
+        <button
+          onClick={() => generateMutation.mutate()}
+          disabled={generateMutation.isPending}
+          className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50 flex-shrink-0"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', generateMutation.isPending && 'animate-spin')} />
+          Jetzt erzeugen
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
+        </div>
+      ) : backups.length === 0 ? (
+        <p className="py-12 text-center text-sm text-slate-400">Noch keine Sicherungen vorhanden</p>
+      ) : (
+        <div className="divide-y divide-slate-50">
+          {backups.map((b) => (
+            <div key={b.filename} className="flex items-center gap-4 px-5 py-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-800 truncate">{b.filename}</p>
+                <p className="text-xs text-slate-400">
+                  {(b.sizeBytes / 1024).toFixed(1)} KB · {formatDateTime(b.createdAt)}
+                </p>
+              </div>
+              <button
+                onClick={() => download(b.filename)}
                 title="Herunterladen"
                 className="flex items-center gap-1.5 rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
               >
