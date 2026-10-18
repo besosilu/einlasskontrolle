@@ -118,17 +118,23 @@ export interface ReportFile {
   createdAt: string;
 }
 
+interface ParsedReportFilename {
+  filename: string;
+  period: string;
+  scope: 'month' | 'year';
+}
+
 export function listReports(): ReportFile[] {
   return fs
     .readdirSync(REPORTS_DIR)
-    .flatMap((filename) => {
+    .flatMap((filename): ParsedReportFilename[] => {
       const monthMatch = MONTHLY_FILE_PATTERN.exec(filename);
-      if (monthMatch) return [{ filename, period: monthMatch[1], scope: 'month' as const }];
+      if (monthMatch) return [{ filename, period: monthMatch[1], scope: 'month' }];
       const yearMatch = YEARLY_FILE_PATTERN.exec(filename);
-      if (yearMatch) return [{ filename, period: yearMatch[1], scope: 'year' as const }];
+      if (yearMatch) return [{ filename, period: yearMatch[1], scope: 'year' }];
       return [];
     })
-    .map(({ filename, period, scope }) => {
+    .map(({ filename, period, scope }): ReportFile => {
       const stat = fs.statSync(path.join(REPORTS_DIR, filename));
       return { filename, period, scope, sizeBytes: stat.size, createdAt: stat.mtime.toISOString() };
     })
