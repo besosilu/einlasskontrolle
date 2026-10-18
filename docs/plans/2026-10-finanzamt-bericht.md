@@ -1,6 +1,6 @@
 # Plan: Monatlicher Besucherzahlen-Bericht für das Finanzamt, automatisch auf Netzlaufwerk
 
-**Status:** in Umsetzung
+**Status:** umgesetzt (manuell gegen Testcontainer verifiziert; echter UNC-Sync noch nicht mit realem Netzlaufwerk getestet)
 **Erstellt:** 2026-10-18
 
 ## Context
