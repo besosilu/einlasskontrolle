@@ -30,3 +30,4 @@ release/
 
 # Lokale Datenbank-Backups (personenbezogene Daten)
 backups/
+reports/

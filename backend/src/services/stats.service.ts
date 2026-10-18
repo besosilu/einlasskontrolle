@@ -86,6 +86,33 @@ export async function getWorkload() {
   return { byHour, byDow };
 }
 
+// Groups by the entry_date column (the browser's calendar day at write time), not entry_time -
+// getStatsByDay below buckets by entry_time.toISOString() (UTC), which is wrong for anything
+// date-sensitive (see docs/plans/2026-10-finanzamt-bericht.md). Used for the monthly Finanzamt report.
+export async function getAttendanceByDay(from: string, to: string) {
+  const rows = await sql<{
+    entry_date: Date; total: string; scan_count: string; manual_count: string; unique_members: string;
+  }[]>`
+    SELECT entry_date,
+           COUNT(*) AS total,
+           COUNT(*) FILTER (WHERE method = 'scan') AS scan_count,
+           COUNT(*) FILTER (WHERE method = 'manual') AS manual_count,
+           COUNT(DISTINCT member_id) AS unique_members
+    FROM entries
+    WHERE entry_date BETWEEN ${from}::date AND ${to}::date
+    GROUP BY entry_date
+    ORDER BY entry_date
+  `;
+
+  return rows.map((r) => ({
+    date: toDayString(r.entry_date),
+    total: Number(r.total),
+    scanCount: Number(r.scan_count),
+    manualCount: Number(r.manual_count),
+    uniqueMembers: Number(r.unique_members),
+  }));
+}
+
 export async function getStatsByDay(from?: string, to?: string) {
   const conditions: ReturnType<typeof sql>[] = [];
   if (from) conditions.push(sql`e.entry_time >= ${new Date(from)}`);

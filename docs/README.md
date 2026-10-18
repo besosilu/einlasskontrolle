@@ -17,3 +17,4 @@
 |---|---|
 | [Chat mit den Statistiken](plans/2026-10-statistik-chat.md) | umgesetzt (Live-Test mit API-Key offen) |
 | [Finanzamt-Bericht auf Netzlaufwerk](plans/2026-10-finanzamt-bericht.md) | in Umsetzung |
+| [Einlass-Auto-Import vom Netzlaufwerk](plans/2026-10-einlass-auto-import.md) | genehmigt, Umsetzung noch nicht begonnen |

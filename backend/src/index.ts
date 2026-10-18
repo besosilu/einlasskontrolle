@@ -11,10 +11,12 @@ import pricesRoutes from './routes/prices.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import usersRoutes from './routes/users.routes.js';
 import systemRoutes from './routes/system.routes.js';
+import reportsRoutes from './routes/reports.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requireAuth, requireAdmin } from './middleware/requireAuth.js';
 import { runMigrations } from './lib/migrate.js';
 import { ensureAdminUser } from './services/auth.service.js';
+import { startMonthlyReportScheduler } from './services/reports.service.js';
 
 const app = express();
 const PORT = process.env['PORT'] ?? 3001;
@@ -35,6 +37,7 @@ app.use('/api/v1/import', requireAuth, importRoutes);
 app.use('/api/v1/prices', requireAuth, pricesRoutes);
 app.use('/api/v1/users', requireAdmin, usersRoutes);
 app.use('/api/v1/system', requireAuth, systemRoutes);
+app.use('/api/v1/reports', requireAdmin, reportsRoutes);
 
 const frontendDist = process.env['FRONTEND_DIST_PATH'] ?? path.join(__dirname, '../public');
 app.use(express.static(frontendDist));
@@ -47,6 +50,7 @@ app.use(errorHandler);
 runMigrations()
   .then(() => ensureAdminUser())
   .then(() => {
+    startMonthlyReportScheduler();
     app.listen(PORT, () => {
       console.log(`Backend läuft auf Port ${PORT}`);
     });

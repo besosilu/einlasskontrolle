@@ -1,4 +1,5 @@
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_PATTERN = /^\d{4}-\d{2}$/;
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -22,4 +23,27 @@ export function parseClientNow(value: unknown): Date | undefined {
   if (typeof value !== 'string') return undefined;
   const d = new Date(value);
   return isNaN(d.getTime()) ? undefined : d;
+}
+
+/** First/last day (yyyy-MM-dd) and every calendar day in between, for a yyyy-MM month. */
+export function monthRange(yearMonth: string): { from: string; to: string; days: string[] } {
+  if (!MONTH_PATTERN.test(yearMonth)) {
+    throw new Error(`Ungültiger Monat: ${yearMonth}`);
+  }
+  const [y, m] = yearMonth.split('-').map(Number);
+  const from = new Date(y, m - 1, 1);
+  const to = new Date(y, m, 0);
+
+  const days: string[] = [];
+  for (const d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+    days.push(toDayString(d));
+  }
+
+  return { from: toDayString(from), to: toDayString(to), days };
+}
+
+/** yyyy-MM of the last fully completed month (the current month doesn't count, it isn't over yet). */
+export function getLastCompletedMonth(now: Date = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 }

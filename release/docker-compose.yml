@@ -18,6 +18,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}   # optional: aktiviert den Chat in den Statistiken
     volumes:
       - einlass_data:/var/lib/postgresql/data
+      - ./reports:/app/reports
 
 volumes:
   einlass_data:
