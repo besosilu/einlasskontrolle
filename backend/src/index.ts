@@ -39,6 +39,7 @@ app.use('/api/v1/prices', requireAuth, pricesRoutes);
 app.use('/api/v1/users', requireAdmin, usersRoutes);
 app.use('/api/v1/system', requireAuth, systemRoutes);
 app.use('/api/v1/reports', requireAdmin, reportsRoutes);
+app.use('/api/v1/backup', requireAdminOrBackupApiKey, backupRoutes);
 
 const frontendDist = process.env['FRONTEND_DIST_PATH'] ?? path.join(__dirname, '../public');
 app.use(express.static(frontendDist));

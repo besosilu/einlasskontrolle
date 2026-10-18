@@ -16,9 +16,11 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       APP_URL: ${APP_URL}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}   # optional: aktiviert den Chat in den Statistiken
+      BACKUP_API_KEY: ${BACKUP_API_KEY:-}         # optional: aktiviert den MCP-Backup-Importer
     volumes:
       - einlass_data:/var/lib/postgresql/data
       - ./reports:/app/reports
+      - ./backups:/app/backups
 
 volumes:
   einlass_data:
