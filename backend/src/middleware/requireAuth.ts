@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../services/auth.service.js';
+import { hasValidBackupApiKey } from './requireBackupApiKey.js';
 
 export interface AuthRequest extends Request {
   userId: number;
@@ -36,4 +37,13 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     }
     next();
   });
+}
+
+// Für Maschinen-Clients (MCP-Backup-Importer) ohne Browser-Session: lässt bei gültigem
+// X-Backup-Api-Key-Header durch, fällt sonst auf die normale Admin-JWT-Prüfung zurück.
+export function requireAdminOrBackupApiKey(req: Request, res: Response, next: NextFunction) {
+  if (hasValidBackupApiKey(req)) {
+    return next();
+  }
+  requireAdmin(req, res, next);
 }
