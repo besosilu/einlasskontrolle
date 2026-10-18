@@ -75,6 +75,11 @@ Verwalten (in diesem Ordner, per PowerShell/CMD):
 
 Die Datenbank-Daten liegen in einem Docker-Volume und bleiben beim Stoppen/Neustarten
 erhalten. Nur "docker compose down -v" loescht sie.
+
+Der Ordner "reports" (entsteht beim ersten Start neben dieser docker-compose.yml) enthaelt
+die monatlichen Finanzamt-Berichte (CSV) - anders als das Docker-Volume sind das echte
+Dateien auf der Festplatte. Bei einem Umzug auf einen anderen PC/Server diesen Ordner
+mitnehmen bzw. sichern, falls die Berichte als Nachweis aufbewahrt werden sollen.
 '@
 
 Write-Host "`n== Ergebnis ==" -ForegroundColor Green

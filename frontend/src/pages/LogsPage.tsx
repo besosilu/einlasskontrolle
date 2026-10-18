@@ -4,19 +4,22 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { importApi } from '@/api/import';
 import { entriesApi } from '@/api/entries';
+import { reportsApi } from '@/api/reports';
 import { formatDateTime } from '@/utils/dateUtils';
 import { showToast } from '@/components/ui/Toast';
 import { cn } from '@/utils/cn';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Trash2, FileText, ScanLine } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Trash2, FileText, ScanLine, Landmark, Download, RefreshCw } from 'lucide-react';
 import type { ImportLog, Entry } from '@/types';
 
-type Tab = 'import' | 'scans';
+type Tab = 'import' | 'scans' | 'finanzamt';
 
 const PAGE_SIZE_IMPORT = 20;
 const PAGE_SIZE_SCANS = 50;
 
 export function LogsPage() {
   const [tab, setTab] = useState<Tab>('import');
+  const { isAdmin } = useAuth();
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -43,10 +46,103 @@ export function LogsPage() {
           <ScanLine className="h-4 w-4" />
           Scans
         </button>
+        {isAdmin && (
+          <button
+            onClick={() => setTab('finanzamt')}
+            className={cn(
+              'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
+              tab === 'finanzamt' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            )}
+          >
+            <Landmark className="h-4 w-4" />
+            Finanzamt
+          </button>
+        )}
       </div>
 
       {tab === 'import' && <ImportLogTab />}
       {tab === 'scans' && <ScansLogTab />}
+      {tab === 'finanzamt' && isAdmin && <FinanzamtTab />}
+    </div>
+  );
+}
+
+// ─── Finanzamt-Berichte Tab ──────────────────────────────────────────────────
+
+function FinanzamtTab() {
+  const queryClient = useQueryClient();
+  const { data: reports = [], isLoading } = useQuery({
+    queryKey: ['monthly-reports'],
+    queryFn: reportsApi.list,
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: () => reportsApi.generate(),
+    onSuccess: () => {
+      showToast('success', 'Bericht erzeugt.');
+      queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+    },
+    onError: () => showToast('error', 'Bericht konnte nicht erzeugt werden.'),
+  });
+
+  async function download(filename: string) {
+    try {
+      const { blob, filename: name } = await reportsApi.download(filename);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast('error', 'Download fehlgeschlagen.');
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div>
+          <p className="text-sm font-semibold text-slate-700">Monatliche Besucherzahlen-Berichte</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Werden automatisch zum Monatswechsel erzeugt, liegen im Ordner <span className="font-mono">reports/</span>.
+          </p>
+        </div>
+        <button
+          onClick={() => generateMutation.mutate()}
+          disabled={generateMutation.isPending}
+          className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', generateMutation.isPending && 'animate-spin')} />
+          Diesen Monat jetzt erzeugen
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
+        </div>
+      ) : reports.length === 0 ? (
+        <p className="py-12 text-center text-sm text-slate-400">Noch keine Berichte vorhanden</p>
+      ) : (
+        <div className="divide-y divide-slate-50">
+          {reports.map((r) => (
+            <div key={r.filename} className="flex items-center gap-4 px-5 py-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-800">{r.yearMonth}</p>
+                <p className="text-xs text-slate-400">{(r.sizeBytes / 1024).toFixed(1)} KB</p>
+              </div>
+              <button
+                onClick={() => download(r.filename)}
+                title="Herunterladen"
+                className="flex items-center gap-1.5 rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

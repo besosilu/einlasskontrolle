@@ -134,6 +134,23 @@ docker restart einlasskontrolle
 
 Der Ordner `backups/` ist in `.gitignore`, weil er personenbezogene Daten enthält.
 
+## Finanzamt-Berichte
+
+Die App erzeugt automatisch zum Monatswechsel einen CSV-Bericht mit den Besucherzahlen (Datum, Eintritte gesamt, eindeutige Besucher, Scan/Manuell - **keine Namen, kein Geld**, die App erfasst keine Zahlungen). Der Bericht landet im Ordner `reports/` neben der `docker-compose.yml` (lokales Bind-Mount, `REPORTS_DIR` im Container).
+
+Soll der Bericht automatisch auf ein Netzlaufwerk (UNC-Pfad) kopiert werden, ist das in zwei Schritte aufgeteilt, weil Docker Desktop einen UNC-Pfad nicht zuverlässig direkt einbinden kann:
+
+1. Der Container schreibt ausschließlich in den lokalen `reports/`-Ordner.
+2. [`sync-reports-to-network.ps1`](sync-reports-to-network.ps1) kopiert von dort per `robocopy` auf das Netzlaufwerk - `$NetworkPath` im Skript anpassen, dann als tägliche Windows-Aufgabe registrieren:
+
+```powershell
+schtasks /create /tn "EinlassBerichteSync" /tr "powershell -ExecutionPolicy Bypass -File C:\...\sync-reports-to-network.ps1" /sc daily /st 03:00
+```
+
+In der Aufgabenplanung zusätzlich **"Computer zum Ausführen dieser Aufgabe aufwecken"** aktivieren, falls der PC zeitweise im Standby ist - sonst läuft die Aufgabe an diesem Tag einfach nicht.
+
+Manuell erzeugen oder einen bestimmten Monat nachträglich generieren (nur Admins): `POST /api/v1/reports/generate?month=yyyy-MM`. Vorhandene Berichte: `GET /api/v1/reports`, Download über `GET /api/v1/reports/:filename/download`.
+
 ## Projektstruktur
 
 ```

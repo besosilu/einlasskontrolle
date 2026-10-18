@@ -26,7 +26,7 @@ export async function generate(req: Request, res: Response, next: NextFunction) 
 
 export function download(req: Request, res: Response, next: NextFunction) {
   try {
-    const filePath = reportsService.getReportPath(req.params['filename'] ?? '');
+    const filePath = reportsService.getReportPath(String(req.params['filename'] ?? ''));
     if (!filePath) {
       return res.status(404).json({ error: 'Bericht nicht gefunden' });
     }

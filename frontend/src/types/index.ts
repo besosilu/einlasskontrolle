@@ -161,3 +161,10 @@ export interface ImportLogsResult {
   logs: ImportLog[];
   total: number;
 }
+
+export interface MonthlyReport {
+  filename: string;
+  yearMonth: string;
+  sizeBytes: number;
+  createdAt: string;
+}
