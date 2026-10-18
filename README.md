@@ -136,7 +136,12 @@ Der Ordner `backups/` ist in `.gitignore`, weil er personenbezogene Daten enthä
 
 ## Finanzamt-Berichte
 
-Die App erzeugt automatisch zum Monatswechsel einen CSV-Bericht mit den Besucherzahlen (Datum, Eintritte gesamt, eindeutige Besucher, Scan/Manuell - **keine Namen, kein Geld**, die App erfasst keine Zahlungen). Der Bericht landet im Ordner `reports/` neben der `docker-compose.yml` (lokales Bind-Mount, `REPORTS_DIR` im Container).
+Die App erzeugt Besucherzahlen-Berichte als **Excel-Datei** (`.xlsx`) - **keine Namen auf der Übersicht, kein Geld**, die App erfasst keine Zahlungen:
+
+- **Monat** (automatisch zum Monatswechsel erzeugt): Sheet "Übersicht" mit einer Zeile pro Tag des Monats (Datum, Eintritte gesamt, lückenlos auch an Tagen ohne Eintritte). Danach ein eigenes Sheet **pro Tag mit mindestens einem Eintritt** (Sheet-Name = Datum), mit den Mitgliedern dieses Tages: Spalte 1 Mitgliedsnummer, Spalte 2 Name, Spalte 3 Vorname.
+- **Jahr** (nur auf Knopfdruck, keine Automatik): Sheet "Übersicht" mit einer Zeile pro Monat (Monat, Eintritte gesamt). Danach ein Sheet **pro Monat mit mindestens einem Eintritt** (statt pro Tag, sonst zu viele Sheets) mit allen Besuchen dieses Monats in den gleichen drei Spalten - ein Mitglied, das mehrfach im Monat da war, erscheint entsprechend mehrfach.
+
+Beide Berichtsarten landen im Ordner `reports/` neben der `docker-compose.yml` (lokales Bind-Mount, `REPORTS_DIR` im Container).
 
 Soll der Bericht automatisch auf ein Netzlaufwerk (UNC-Pfad) kopiert werden, ist das in zwei Schritte aufgeteilt, weil Docker Desktop einen UNC-Pfad nicht zuverlässig direkt einbinden kann:
 
@@ -149,7 +154,7 @@ schtasks /create /tn "EinlassBerichteSync" /tr "powershell -ExecutionPolicy Bypa
 
 In der Aufgabenplanung zusätzlich **"Computer zum Ausführen dieser Aufgabe aufwecken"** aktivieren, falls der PC zeitweise im Standby ist - sonst läuft die Aufgabe an diesem Tag einfach nicht.
 
-Manuell erzeugen oder einen bestimmten Monat nachträglich generieren (nur Admins): `POST /api/v1/reports/generate?month=yyyy-MM`. Vorhandene Berichte: `GET /api/v1/reports`, Download über `GET /api/v1/reports/:filename/download`.
+Manuell erzeugen (nur Admins, auch im Finanzamt-Tab unter Protokoll möglich): `POST /api/v1/reports/generate?scope=month&period=yyyy-MM` oder `?scope=year&period=yyyy` (Default ohne `period`: letzter abgeschlossener Monat bzw. letztes Jahr). Vorhandene Berichte: `GET /api/v1/reports`, Download über `GET /api/v1/reports/:filename/download`.
 
 ## Projektstruktur
 

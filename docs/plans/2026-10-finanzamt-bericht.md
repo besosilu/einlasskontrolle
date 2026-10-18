@@ -1,7 +1,19 @@
 # Plan: Monatlicher Besucherzahlen-Bericht für das Finanzamt, automatisch auf Netzlaufwerk
 
-**Status:** umgesetzt (manuell gegen Testcontainer verifiziert; echter UNC-Sync noch nicht mit realem Netzlaufwerk getestet)
+**Status:** umgesetzt, dann überarbeitet (siehe Nachtrag) - manuell gegen Testcontainer verifiziert; echter UNC-Sync noch nicht mit realem Netzlaufwerk getestet
 **Erstellt:** 2026-10-18
+
+## Nachtrag 2026-10-18: CSV → Excel, Zeitraum Monat/Jahr wählbar
+
+Ursprünglich CSV mit festen Spalten (Datum;Eintritte;Eindeutige Besucher;Scan;Manuell), nur Monat, nur automatisch. Auf Wunsch des Nutzers überarbeitet:
+
+- **Format:** Excel (`.xlsx`, über `exceljs` - neue Abhängigkeit, bewusster Kompromiss gegen das "klein/kompakt"-Ziel, da explizit so gewünscht).
+- **Zeitraum wählbar:** Monat (wie bisher, weiterhin automatisch zum Monatswechsel) oder Jahr (**nur manuell**, keine automatische jährliche Erzeugung).
+- **Monats-Report:** Sheet "Übersicht" = eine Zeile pro Tag, nur noch eine Gesamtspalte (kein Scan/Manuell-Split mehr). Danach ein Sheet pro Tag **mit** Eintritten (Sheet-Name = Datum), Spalten Mitgliedsnummer/Name/Vorname.
+- **Jahres-Report:** Sheet "Übersicht" = eine Zeile pro Monat. Danach ein Sheet **pro Monat** (nicht pro Tag, sonst zu viele Sheets) mit Eintritten, gleiche drei Spalten - ein Mitglied mit mehreren Besuchen im Monat erscheint entsprechend mehrfach (eine Zeile pro Besuch, keine Deduplizierung - Annahme, da vom Nutzer nicht explizit festgelegt).
+- Neue Stats-Funktionen (`backend/src/services/stats.service.ts`): `getMembersForDay()`, `getEntriesForMonth()`, `getAttendanceByMonth()`. Neuer Helper `yearRange()` in `backend/src/lib/dateParams.ts`.
+- `reports.controller.ts`: `generate()` nimmt jetzt `scope` (`month`/`year`) + `period` statt nur `month`.
+- Frontend (`LogsPage.tsx` Finanzamt-Tab): Monat/Jahr-Umschalter + Periodeneingabe vor "Jetzt erzeugen".
 
 ## Context
 

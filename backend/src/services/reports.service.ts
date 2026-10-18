@@ -1,67 +1,138 @@
 import fs from 'fs';
 import path from 'path';
+import ExcelJS from 'exceljs';
 import * as statsService from './stats.service.js';
-import { monthRange, getLastCompletedMonth } from '../lib/dateParams.js';
+import { monthRange, yearRange, getLastCompletedMonth } from '../lib/dateParams.js';
 
 const REPORTS_DIR = process.env['REPORTS_DIR'] ?? path.join(process.cwd(), 'reports');
 fs.mkdirSync(REPORTS_DIR, { recursive: true });
 
-function csvField(value: string | number): string {
-  const v = String(value);
-  return /[;"\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+const MEMBER_COLUMNS = [
+  { header: 'Mitgliedsnummer', key: 'memberNumber', width: 16 },
+  { header: 'Name', key: 'lastName', width: 22 },
+  { header: 'Vorname', key: 'firstName', width: 22 },
+];
+
+function monthlyFilename(yearMonth: string): string {
+  return `Besucherstatistik_${yearMonth}.xlsx`;
 }
 
-function reportFilename(yearMonth: string): string {
-  return `Besucherstatistik_${yearMonth}.csv`;
+function yearlyFilename(year: string): string {
+  return `Besucherstatistik_${year}.xlsx`;
+}
+
+async function writeWorkbook(workbook: ExcelJS.Workbook, filename: string): Promise<string> {
+  const finalPath = path.join(REPORTS_DIR, filename);
+  const tmpPath = path.join(REPORTS_DIR, `.tmp-${filename}`);
+  await workbook.xlsx.writeFile(tmpPath);
+  fs.renameSync(tmpPath, finalPath);
+  return finalPath;
 }
 
 export { getLastCompletedMonth };
 
 export async function generateMonthlyAttendanceReport(yearMonth: string): Promise<{ filename: string; path: string }> {
   const { from, to, days } = monthRange(yearMonth);
-  const rows = await statsService.getAttendanceByDay(from, to);
-  const byDate = new Map(rows.map((r) => [r.date, r]));
+  const dayRows = await statsService.getAttendanceByDay(from, to);
+  const byDate = new Map(dayRows.map((r) => [r.date, r]));
 
-  const lines = ['Datum;Eintritte gesamt;Eindeutige Besucher;Scan;Manuell'];
+  const workbook = new ExcelJS.Workbook();
+
+  const overview = workbook.addWorksheet('Übersicht');
+  overview.columns = [
+    { header: 'Datum', key: 'date', width: 14 },
+    { header: 'Eintritte gesamt', key: 'total', width: 18 },
+  ];
   for (const day of days) {
-    const r = byDate.get(day);
-    lines.push(
-      [day, r?.total ?? 0, r?.uniqueMembers ?? 0, r?.scanCount ?? 0, r?.manualCount ?? 0].map(csvField).join(';')
-    );
+    overview.addRow({ date: day, total: byDate.get(day)?.total ?? 0 });
   }
-  const csv = '﻿' + lines.join('\r\n') + '\r\n';
 
-  const filename = reportFilename(yearMonth);
-  const finalPath = path.join(REPORTS_DIR, filename);
-  const tmpPath = path.join(REPORTS_DIR, `.tmp-${filename}`);
-  fs.writeFileSync(tmpPath, csv, 'utf-8');
-  fs.renameSync(tmpPath, finalPath);
+  // Ein Sheet pro Tag, an dem tatsächlich gescannt wurde (keine leeren Tage).
+  for (const day of days) {
+    const total = byDate.get(day)?.total ?? 0;
+    if (total === 0) continue;
+    const members = await statsService.getMembersForDay(day);
+    const sheet = workbook.addWorksheet(day);
+    sheet.columns = MEMBER_COLUMNS;
+    for (const m of members) {
+      sheet.addRow({ memberNumber: m.memberNumber ?? '', lastName: m.lastName, firstName: m.firstName });
+    }
+  }
 
+  const filename = monthlyFilename(yearMonth);
+  const finalPath = await writeWorkbook(workbook, filename);
+  return { filename, path: finalPath };
+}
+
+export async function generateYearlyAttendanceReport(year: string): Promise<{ filename: string; path: string }> {
+  const { from, to, months } = yearRange(year);
+  const monthRows = await statsService.getAttendanceByMonth(from, to);
+  const byMonth = new Map(monthRows.map((r) => [r.month, r.total]));
+
+  const workbook = new ExcelJS.Workbook();
+
+  const overview = workbook.addWorksheet('Übersicht');
+  overview.columns = [
+    { header: 'Monat', key: 'month', width: 14 },
+    { header: 'Eintritte gesamt', key: 'total', width: 18 },
+  ];
+  for (const month of months) {
+    overview.addRow({ month, total: byMonth.get(month) ?? 0 });
+  }
+
+  // Ein Sheet pro Monat mit Eintritten (statt pro Tag) - sonst zu viele Sheets für ein ganzes Jahr.
+  // Jede Zeile ist ein einzelner Besuch; Mitglieder, die mehrfach im Monat waren, erscheinen mehrfach.
+  for (const month of months) {
+    const total = byMonth.get(month) ?? 0;
+    if (total === 0) continue;
+    const { from: mFrom, to: mTo } = monthRange(month);
+    const entries = await statsService.getEntriesForMonth(mFrom, mTo);
+    const sheet = workbook.addWorksheet(month);
+    sheet.columns = MEMBER_COLUMNS;
+    for (const e of entries) {
+      sheet.addRow({ memberNumber: e.memberNumber ?? '', lastName: e.lastName, firstName: e.firstName });
+    }
+  }
+
+  const filename = yearlyFilename(year);
+  const finalPath = await writeWorkbook(workbook, filename);
   return { filename, path: finalPath };
 }
 
 export async function ensureMonthlyReportsUpToDate(): Promise<void> {
   const target = getLastCompletedMonth();
-  const expectedPath = path.join(REPORTS_DIR, reportFilename(target));
+  const expectedPath = path.join(REPORTS_DIR, monthlyFilename(target));
   if (!fs.existsSync(expectedPath)) {
     await generateMonthlyAttendanceReport(target);
   }
 }
 
-export function listReports(): { filename: string; yearMonth: string; sizeBytes: number; createdAt: string }[] {
+const MONTHLY_FILE_PATTERN = /^Besucherstatistik_(\d{4}-\d{2})\.xlsx$/;
+const YEARLY_FILE_PATTERN = /^Besucherstatistik_(\d{4})\.xlsx$/;
+
+export interface ReportFile {
+  filename: string;
+  period: string;
+  scope: 'month' | 'year';
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export function listReports(): ReportFile[] {
   return fs
     .readdirSync(REPORTS_DIR)
-    .filter((f) => /^Besucherstatistik_\d{4}-\d{2}\.csv$/.test(f))
-    .map((filename) => {
-      const stat = fs.statSync(path.join(REPORTS_DIR, filename));
-      return {
-        filename,
-        yearMonth: filename.replace('Besucherstatistik_', '').replace('.csv', ''),
-        sizeBytes: stat.size,
-        createdAt: stat.mtime.toISOString(),
-      };
+    .flatMap((filename) => {
+      const monthMatch = MONTHLY_FILE_PATTERN.exec(filename);
+      if (monthMatch) return [{ filename, period: monthMatch[1], scope: 'month' as const }];
+      const yearMatch = YEARLY_FILE_PATTERN.exec(filename);
+      if (yearMatch) return [{ filename, period: yearMatch[1], scope: 'year' as const }];
+      return [];
     })
-    .sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+    .map(({ filename, period, scope }) => {
+      const stat = fs.statSync(path.join(REPORTS_DIR, filename));
+      return { filename, period, scope, sizeBytes: stat.size, createdAt: stat.mtime.toISOString() };
+    })
+    .sort((a, b) => (a.scope === b.scope ? b.period.localeCompare(a.period) : a.scope.localeCompare(b.scope)));
 }
 
 export function getReportPath(filename: string): string | null {

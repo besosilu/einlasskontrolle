@@ -1,5 +1,6 @@
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_PATTERN = /^\d{4}-\d{2}$/;
+const YEAR_PATTERN = /^\d{4}$/;
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -46,4 +47,16 @@ export function monthRange(yearMonth: string): { from: string; to: string; days:
 export function getLastCompletedMonth(now: Date = new Date()): string {
   const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+
+/** First/last day (yyyy-MM-dd) and every yyyy-MM month in between, for a yyyy year. */
+export function yearRange(year: string): { from: string; to: string; months: string[] } {
+  if (!YEAR_PATTERN.test(year)) {
+    throw new Error(`Ungültiges Jahr: ${year}`);
+  }
+  const y = Number(year);
+  const from = new Date(y, 0, 1);
+  const to = new Date(y, 11, 31);
+  const months = Array.from({ length: 12 }, (_, i) => `${y}-${pad(i + 1)}`);
+  return { from: toDayString(from), to: toDayString(to), months };
 }

@@ -113,6 +113,50 @@ export async function getAttendanceByDay(from: string, to: string) {
   }));
 }
 
+// Members with an entry on a given day (für den Finanzamt-Tagesbericht), unabhängig von Kennzeichen.
+export async function getMembersForDay(day: string) {
+  const rows = await sql<{ member_number: string | null; last_name: string; first_name: string }[]>`
+    SELECT DISTINCT m.member_number, m.last_name, m.first_name
+    FROM entries e
+    JOIN members m ON m.id = e.member_id
+    WHERE e.entry_date = ${day}::date
+    ORDER BY m.last_name, m.first_name
+  `;
+  return rows.map((r) => ({ memberNumber: r.member_number, lastName: r.last_name, firstName: r.first_name }));
+}
+
+// Alle Einträge eines Monats (ein Zeile pro Besuch, Mitglieder können mehrfach vorkommen) für den
+// Finanzamt-Jahresbericht (ein Sheet pro Monat statt pro Tag).
+export async function getEntriesForMonth(from: string, to: string) {
+  const rows = await sql<{
+    entry_date: Date; member_number: string | null; last_name: string; first_name: string;
+  }[]>`
+    SELECT e.entry_date, m.member_number, m.last_name, m.first_name
+    FROM entries e
+    JOIN members m ON m.id = e.member_id
+    WHERE e.entry_date BETWEEN ${from}::date AND ${to}::date
+    ORDER BY e.entry_date, m.last_name, m.first_name
+  `;
+  return rows.map((r) => ({
+    date: toDayString(r.entry_date),
+    memberNumber: r.member_number,
+    lastName: r.last_name,
+    firstName: r.first_name,
+  }));
+}
+
+// Eintritte gesamt pro Monat (für den Finanzamt-Jahresbericht-Übersicht-Sheet).
+export async function getAttendanceByMonth(from: string, to: string) {
+  const rows = await sql<{ month: Date; total: string }[]>`
+    SELECT date_trunc('month', entry_date)::date AS month, COUNT(*) AS total
+    FROM entries
+    WHERE entry_date BETWEEN ${from}::date AND ${to}::date
+    GROUP BY month
+    ORDER BY month
+  `;
+  return rows.map((r) => ({ month: toDayString(r.month).slice(0, 7), total: Number(r.total) }));
+}
+
 export async function getStatsByDay(from?: string, to?: string) {
   const conditions: ReturnType<typeof sql>[] = [];
   if (from) conditions.push(sql`e.entry_time >= ${new Date(from)}`);

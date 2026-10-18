@@ -164,7 +164,8 @@ export interface ImportLogsResult {
 
 export interface MonthlyReport {
   filename: string;
-  yearMonth: string;
+  period: string;
+  scope: 'month' | 'year';
   sizeBytes: number;
   createdAt: string;
 }

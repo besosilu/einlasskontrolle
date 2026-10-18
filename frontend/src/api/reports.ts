@@ -4,8 +4,8 @@ import type { MonthlyReport } from '../types';
 export const reportsApi = {
   list: () => client.get<MonthlyReport[]>('/reports').then((r) => r.data),
 
-  generate: (month?: string) =>
-    client.post<{ filename: string }>('/reports/generate', null, { params: { month } }).then((r) => r.data),
+  generate: (scope: 'month' | 'year', period?: string) =>
+    client.post<{ filename: string }>('/reports/generate', null, { params: { scope, period } }).then((r) => r.data),
 
   download: (filename: string) =>
     client

@@ -71,15 +71,18 @@ export function LogsPage() {
 
 function FinanzamtTab() {
   const queryClient = useQueryClient();
+  const [scope, setScope] = useState<'month' | 'year'>('month');
+  const [period, setPeriod] = useState('');
+
   const { data: reports = [], isLoading } = useQuery({
     queryKey: ['monthly-reports'],
     queryFn: reportsApi.list,
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => reportsApi.generate(),
+    mutationFn: () => reportsApi.generate(scope, period || undefined),
     onSuccess: () => {
-      showToast('success', 'Bericht erzeugt.');
+      showToast('success', 'Bericht erzeugt (Excel).');
       queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
     },
     onError: () => showToast('error', 'Bericht konnte nicht erzeugt werden.'),
@@ -101,21 +104,64 @@ function FinanzamtTab() {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      <div className="border-b border-slate-100 px-5 py-4 space-y-3">
         <div>
-          <p className="text-sm font-semibold text-slate-700">Monatliche Besucherzahlen-Berichte</p>
+          <p className="text-sm font-semibold text-slate-700">Besucherzahlen-Berichte (Excel)</p>
           <p className="text-xs text-slate-400 mt-0.5">
-            Werden automatisch zum Monatswechsel erzeugt, liegen im Ordner <span className="font-mono">reports/</span>.
+            Monatsberichte werden automatisch zum Monatswechsel erzeugt. Jahresberichte entstehen nur auf
+            Knopfdruck. Beide liegen im Ordner <span className="font-mono">reports/</span>.
           </p>
         </div>
-        <button
-          onClick={() => generateMutation.mutate()}
-          disabled={generateMutation.isPending}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={cn('h-3.5 w-3.5', generateMutation.isPending && 'animate-spin')} />
-          Diesen Monat jetzt erzeugen
-        </button>
+
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+            <button
+              onClick={() => { setScope('month'); setPeriod(''); }}
+              className={cn(
+                'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                scope === 'month' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              )}
+            >
+              Monat
+            </button>
+            <button
+              onClick={() => { setScope('year'); setPeriod(''); }}
+              className={cn(
+                'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                scope === 'year' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              )}
+            >
+              Jahr
+            </button>
+          </div>
+
+          {scope === 'month' ? (
+            <input
+              type="month"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              placeholder="letzter abgeschlossener Monat"
+              className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          ) : (
+            <input
+              type="number"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              placeholder={`${new Date().getFullYear() - 1}`}
+              className="w-24 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          )}
+
+          <button
+            onClick={() => generateMutation.mutate()}
+            disabled={generateMutation.isPending}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={cn('h-3.5 w-3.5', generateMutation.isPending && 'animate-spin')} />
+            Jetzt erzeugen
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -129,7 +175,12 @@ function FinanzamtTab() {
           {reports.map((r) => (
             <div key={r.filename} className="flex items-center gap-4 px-5 py-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-800">{r.yearMonth}</p>
+                <p className="text-sm font-medium text-slate-800">
+                  {r.period}
+                  <span className="ml-2 text-xs font-normal text-slate-400">
+                    {r.scope === 'year' ? 'Jahr' : 'Monat'}
+                  </span>
+                </p>
                 <p className="text-xs text-slate-400">{(r.sizeBytes / 1024).toFixed(1)} KB</p>
               </div>
               <button
