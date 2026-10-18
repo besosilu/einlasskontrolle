@@ -132,7 +132,7 @@ docker exec -i einlasskontrolle su-exec postgres psql -U einlass_user -d einlass
 docker restart einlasskontrolle
 ```
 
-Der Ordner `backups/` ist in `.gitignore`, weil er personenbezogene Daten enthält.
+Der Ordner `backups/` ist in `.gitignore`, weil er personenbezogene Daten enthält. Er wird inzwischen doppelt genutzt: als Ablage für eigene, manuell erzeugte `pg_dump`-Dateien wie oben **und** als `BACKUP_DIR` der App für die strukturierten JSON-Sicherungen (siehe nächster Abschnitt) - beides kann nebeneinander im selben Ordner liegen.
 
 ## Finanzamt-Berichte
 
@@ -156,15 +156,28 @@ In der Aufgabenplanung zusätzlich **"Computer zum Ausführen dieser Aufgabe auf
 
 Manuell erzeugen (nur Admins, auch im Finanzamt-Tab unter Protokoll möglich): `POST /api/v1/reports/generate?scope=month&period=yyyy-MM` oder `?scope=year&period=yyyy` (Default ohne `period`: letzter abgeschlossener Monat bzw. letztes Jahr). Vorhandene Berichte: `GET /api/v1/reports`, Download über `GET /api/v1/reports/:filename/download`.
 
+## Zentrale Backup-Sicherung (JSON-Export + MCP-Import)
+
+Zusätzlich zum `pg_dump`-Verfahren oben gibt es einen **laufenden, strukturierten Export** (JSON statt rohem SQL-Dump), gedacht für eine zweite, zentrale Postgres-Datenbank an einem anderen Ort (eigener Rechner, NAS, Cloud-VM) als Offsite-Kopie. Beide Verfahren sind unabhängig voneinander - keines ersetzt das andere.
+
+- **Was wird exportiert:** `members`, `entries`, `import_logs`, `import_member_links`, `price_items`. **Nie** exportiert: `users`/`registration_requests` (Passwort-Hashes verlassen das Haus nie) und `_migrations` (rein technisch).
+- **Auslösung:** ausschließlich manuell, über den "Sicherung"-Tab unter Protokoll (nur Admins) oder `POST /api/v1/backup/generate`. Kein automatischer Zeitplan.
+- **Ablage:** `backups/` (lokales Bind-Mount, `BACKUP_DIR` im Container), Dateiname `Sicherung_<Zeitstempel>.json`.
+- **Import in die zentrale DB:** über einen neuen MCP-Server, [`mcp-backup-import/`](mcp-backup-import/README.md) - läuft lokal beim Nutzer (vom Claude-Client gestartet), ruft die Backup-API ab und importiert per Upsert (idempotent, keine Duplikate bei mehrfachem Import) in die zentrale Datenbank.
+- **Maschinenzugriff absichern:** `BACKUP_API_KEY` in der `.env` setzen (z.B. `openssl rand -hex 32`) - ohne diesen Key bleibt nur der normale Admin-Login über den Browser nutzbar, der MCP-Server kann dann nicht zugreifen.
+
+API: `GET /api/v1/backup` (Liste), `POST /api/v1/backup/generate`, `GET /api/v1/backup/:filename/download` - alle entweder mit Admin-Login oder mit Header `X-Backup-Api-Key: <BACKUP_API_KEY>`.
+
 ## Projektstruktur
 
 ```
-backend/     Express + TypeScript, postgres.js; Migrationen in src/lib/migrate.ts
-frontend/    React + Vite + TypeScript + Tailwind, TanStack Query, PWA
-Dockerfile   All-in-One-Image (Postgres + Backend + Frontend)
-entrypoint.sh  Startskript des Images (initialisiert die Datenbank, startet Postgres und Backend)
-nginx/       Konfiguration für die Mehr-Container-Varianten
-scripts/     Hilfsskripte
+backend/             Express + TypeScript, postgres.js; Migrationen in src/lib/migrate.ts
+frontend/            React + Vite + TypeScript + Tailwind, TanStack Query, PWA
+mcp-backup-import/   MCP-Server (stdio) für den Import der Backup-Sicherung in eine zentrale DB - eigenständiges Node-Paket, läuft nie im Docker-Image
+Dockerfile           All-in-One-Image (Postgres + Backend + Frontend)
+entrypoint.sh        Startskript des Images (initialisiert die Datenbank, startet Postgres und Backend)
+nginx/               Konfiguration für die Mehr-Container-Varianten
+scripts/             Hilfsskripte
 ```
 
 ## API (Auswahl)
@@ -183,3 +196,5 @@ Alle Routen unter `/api/v1`, außer Login und Registrierung mit Bearer-Token.
 | Chat | `GET /stats/chat/status`, `POST /stats/chat` (`messages[]`, `today`) |
 | System | `GET /system/time` |
 | Benutzer (Admin) | `GET /users`, Registrierungen freigeben oder ablehnen, sperren, löschen |
+| Berichte (Admin) | `GET /reports`, `POST /reports/generate?scope=month\|year&period=`, `GET /reports/:filename/download` |
+| Backup-Sicherung (Admin oder `X-Backup-Api-Key`) | `GET /backup`, `POST /backup/generate`, `GET /backup/:filename/download` |
