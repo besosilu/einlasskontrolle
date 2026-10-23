@@ -53,7 +53,8 @@ export async function getLogs(req: Request, res: Response, next: NextFunction) {
   try {
     const limit = Math.min(Number(req.query['limit'] ?? 20), 100);
     const offset = Number(req.query['offset'] ?? 0);
-    const result = await importService.getImportLogs(limit, offset);
+    const source = req.query['source'] === 'auto' || req.query['source'] === 'manual' ? req.query['source'] : undefined;
+    const result = await importService.getImportLogs(limit, offset, source);
     res.json(result);
   } catch (err) {
     next(err);

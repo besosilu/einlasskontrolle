@@ -150,6 +150,13 @@ export async function runMigrations() {
         ALTER TABLE import_logs ADD COLUMN IF NOT EXISTS entries_created INTEGER;
       `,
     },
+    {
+      name: '010_import_logs_source',
+      sql: `
+        ALTER TABLE import_logs ADD COLUMN IF NOT EXISTS source VARCHAR(10) NOT NULL DEFAULT 'manual';
+        CREATE INDEX IF NOT EXISTS import_logs_source_idx ON import_logs(source);
+      `,
+    },
   ];
 
   for (const migration of migrations) {

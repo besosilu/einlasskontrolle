@@ -1,7 +1,12 @@
 import sql from '../lib/db.js';
 import { parseMemberCsv } from '../lib/csvParser.js';
 
-export async function importMembersFromCsv(fileContent: string, filename: string, entryDateOverride?: string) {
+export async function importMembersFromCsv(
+  fileContent: string,
+  filename: string,
+  entryDateOverride?: string,
+  source: 'manual' | 'auto' = 'manual',
+) {
   const { rows, errors } = parseMemberCsv(fileContent);
 
   let recordsCreated = 0;
@@ -130,10 +135,10 @@ export async function importMembersFromCsv(fileContent: string, filename: string
     }
 
     const [log] = await tx<{ id: number }[]>`
-      INSERT INTO import_logs (filename, records_total, records_created, records_updated, records_skipped, entries_created, errors)
+      INSERT INTO import_logs (filename, records_total, records_created, records_updated, records_skipped, entries_created, errors, source)
       VALUES (
         ${filename}, ${rows.length}, ${recordsCreated}, ${recordsUpdated}, ${recordsSkipped}, ${entriesCreated},
-        ${JSON.stringify(importErrors)}
+        ${JSON.stringify(importErrors)}, ${source}
       )
       RETURNING id
     `;
@@ -161,7 +166,7 @@ export async function importMembersFromCsv(fileContent: string, filename: string
 type ImportLogRow = {
   id: number; filename: string; imported_at: Date;
   records_total: number; records_created: number; records_updated: number; records_skipped: number;
-  entries_created: number | null; errors: unknown;
+  entries_created: number | null; errors: unknown; source: string;
 };
 
 function mapImportLog(r: ImportLogRow) {
@@ -175,16 +180,18 @@ function mapImportLog(r: ImportLogRow) {
     recordsSkipped: r.records_skipped,
     entriesCreated: r.entries_created,
     errors: r.errors,
+    source: r.source,
   };
 }
 
-export async function getImportLogs(limit = 20, offset = 0) {
+export async function getImportLogs(limit = 20, offset = 0, source?: 'manual' | 'auto') {
+  const sourceFilter = source ? sql`WHERE source = ${source}` : sql``;
   const [rows, countResult] = await Promise.all([
     sql<ImportLogRow[]>`
-      SELECT id, filename, imported_at, records_total, records_created, records_updated, records_skipped, entries_created, errors
-      FROM import_logs ORDER BY imported_at DESC LIMIT ${limit} OFFSET ${offset}
+      SELECT id, filename, imported_at, records_total, records_created, records_updated, records_skipped, entries_created, errors, source
+      FROM import_logs ${sourceFilter} ORDER BY imported_at DESC LIMIT ${limit} OFFSET ${offset}
     `,
-    sql<[{ count: string }]>`SELECT COUNT(*) AS count FROM import_logs`,
+    sql<[{ count: string }]>`SELECT COUNT(*) AS count FROM import_logs ${sourceFilter}`,
   ]);
   return { logs: rows.map(mapImportLog), total: Number(countResult[0].count) };
 }
