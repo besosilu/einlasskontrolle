@@ -176,3 +176,7 @@ export interface BackupFile {
   sizeBytes: number;
   createdAt: string;
 }
+
+export interface AutoImportSettings {
+  networkPath: string | null;
+}

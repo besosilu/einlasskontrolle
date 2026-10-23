@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { ScanLine, BarChart3, Upload, Waves, Euro, Users, ScrollText, IdCard } from 'lucide-react';
+import { ScanLine, BarChart3, Upload, Waves, Euro, Users, ScrollText, IdCard, Settings } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 
@@ -16,7 +16,11 @@ export function Sidebar() {
   const { isAdmin } = useAuth();
 
   const navItems = isAdmin
-    ? [...baseNavItems, { to: '/users', icon: Users, label: 'Benutzer' }]
+    ? [
+        ...baseNavItems,
+        { to: '/users', icon: Users, label: 'Benutzer' },
+        { to: '/einstellungen', icon: Settings, label: 'Einstellungen' },
+      ]
     : baseNavItems;
 
   return (

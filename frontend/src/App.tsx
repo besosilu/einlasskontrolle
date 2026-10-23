@@ -13,6 +13,7 @@ import { ActivatePage } from './pages/ActivatePage';
 import { SetInitialPasswordPage } from './pages/SetInitialPasswordPage';
 import { UsersPage } from './pages/UsersPage';
 import { LogsPage } from './pages/LogsPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { useAuth } from './context/AuthContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -62,6 +63,14 @@ export default function App() {
           element={
             <AdminRoute>
               <UsersPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/einstellungen"
+          element={
+            <AdminRoute>
+              <SettingsPage />
             </AdminRoute>
           }
         />

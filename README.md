@@ -109,13 +109,15 @@ Zusätzlich zum manuellen CSV-Import im Dialog erkennt die App automatisch im Hi
 Da Docker Desktop einen UNC-Netzlaufwerkpfad nicht zuverlässig direkt einbinden kann, ist die Zustellung wie bei den Finanzamt-Berichten in zwei Schritte aufgeteilt - hier in umgekehrter Richtung (Netzlaufwerk → lokal statt lokal → Netzlaufwerk):
 
 1. Der Container liest/schreibt ausschließlich im lokalen `inbox/`-Ordner.
-2. [`sync-inbox-from-network.ps1`](sync-inbox-from-network.ps1) kopiert per `robocopy` vom Netzlaufwerk in diesen Ordner (kein `/MOV` - die Originaldatei bleibt auf dem Netzlaufwerk erhalten, auch wenn die Verarbeitung im Container später fehlschlägt) - `$NetworkPath` im Skript anpassen, dann als Windows-Aufgabe registrieren:
+2. [`sync-inbox-from-network.ps1`](sync-inbox-from-network.ps1) kopiert per `robocopy` vom Netzlaufwerk in diesen Ordner (kein `/MOV` - die Originaldatei bleibt auf dem Netzlaufwerk erhalten, auch wenn die Verarbeitung im Container später fehlschlägt), dann als Windows-Aufgabe registrieren:
 
 ```powershell
 schtasks /create /tn "EinlassInboxSync" /tr "powershell -ExecutionPolicy Bypass -File C:\...\sync-inbox-from-network.ps1" /sc minute /mo 10
 ```
 
 Auch hier in der Aufgabenplanung **"Computer zum Ausführen dieser Aufgabe aufwecken"** aktivieren, falls der PC zeitweise im Standby ist.
+
+**Netzlaufwerk-Pfad konfigurieren:** unter **Einstellungen** (nur Admins) in der UI eintragen und speichern - das Skript liest den Wert bei jedem Lauf automatisch aus einer Konfigurationsdatei, die der Container im `inbox/`-Ordner ablegt, kein Bearbeiten des Skripts mehr nötig. Ein explizit übergebener `-NetworkPath`-Parameter (z.B. für einen Testlauf) hat weiterhin Vorrang vor dem UI-Wert; ist weder das eine noch das andere gesetzt, nutzt das Skript einen Beispiel-Pfad als Fallback.
 
 Import-Protokoll nach Quelle filtern: `GET /api/v1/import/logs?source=auto` (bzw. `?source=manual`); ohne Parameter liefert die Route weiterhin alle Einträge.
 
@@ -221,3 +223,4 @@ Alle Routen unter `/api/v1`, außer Login und Registrierung mit Bearer-Token.
 | Benutzer (Admin) | `GET /users`, Registrierungen freigeben oder ablehnen, sperren, löschen |
 | Berichte (Admin) | `GET /reports`, `POST /reports/generate?scope=month\|year&period=`, `GET /reports/:filename/download` |
 | Backup-Sicherung (Admin oder `X-Backup-Api-Key`) | `GET /backup`, `POST /backup/generate`, `GET /backup/:filename/download` |
+| Einstellungen (Admin) | `GET /settings/auto-import`, `PUT /settings/auto-import` (`networkPath`) |
