@@ -1,6 +1,6 @@
 # Plan: UI-Konfiguration für den Auto-Import-Netzlaufwerkpfad
 
-**Status:** genehmigt, Umsetzung begonnen
+**Status:** umgesetzt - manuell gegen Testcontainer verifiziert
 **Erstellt:** 2026-10-23
 **Bezug:** Ergänzt `docs/plans/2026-10-einlass-auto-import.md`
 

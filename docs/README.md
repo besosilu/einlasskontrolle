@@ -20,4 +20,4 @@
 | [Einlass-Auto-Import vom Netzlaufwerk](plans/2026-10-einlass-auto-import.md) | umgesetzt |
 | [Backup-Export + MCP-Import in zentrale DB](plans/2026-10-backup-export-mcp.md) | genehmigt, Umsetzung begonnen |
 | [Auto-Import-Protokoll im Scanner-Widget](plans/2026-10-auto-import-protokoll.md) | umgesetzt |
-| [UI-Konfiguration Auto-Import-Netzlaufwerkpfad](plans/2026-10-auto-import-settings-ui.md) | genehmigt, Umsetzung begonnen |
+| [UI-Konfiguration Auto-Import-Netzlaufwerkpfad](plans/2026-10-auto-import-settings-ui.md) | umgesetzt |
