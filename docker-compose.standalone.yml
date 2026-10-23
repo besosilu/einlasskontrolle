@@ -21,6 +21,7 @@ services:
       - einlass_data:/var/lib/postgresql/data
       - ./reports:/app/reports
       - ./backups:/app/backups
+      - ./inbox:/app/inbox
 
 volumes:
   einlass_data:
