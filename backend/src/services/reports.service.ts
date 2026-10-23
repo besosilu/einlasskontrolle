@@ -14,11 +14,11 @@ const MEMBER_COLUMNS = [
 ];
 
 function monthlyFilename(yearMonth: string): string {
-  return `Besucherstatistik_${yearMonth}.xlsx`;
+  return `Finanzamt_Monat_${yearMonth}.xlsx`;
 }
 
 function yearlyFilename(year: string): string {
-  return `Besucherstatistik_${year}.xlsx`;
+  return `Finanzamt_Jahr_${year}.xlsx`;
 }
 
 async function writeWorkbook(workbook: ExcelJS.Workbook, filename: string): Promise<string> {
@@ -107,8 +107,8 @@ export async function ensureMonthlyReportsUpToDate(): Promise<void> {
   }
 }
 
-const MONTHLY_FILE_PATTERN = /^Besucherstatistik_(\d{4}-\d{2})\.xlsx$/;
-const YEARLY_FILE_PATTERN = /^Besucherstatistik_(\d{4})\.xlsx$/;
+const MONTHLY_FILE_PATTERN = /^Finanzamt_Monat_(\d{4}-\d{2})\.xlsx$/;
+const YEARLY_FILE_PATTERN = /^Finanzamt_Jahr_(\d{4})\.xlsx$/;
 
 export interface ReportFile {
   filename: string;

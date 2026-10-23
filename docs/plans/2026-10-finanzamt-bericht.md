@@ -15,6 +15,15 @@ Ursprünglich CSV mit festen Spalten (Datum;Eintritte;Eindeutige Besucher;Scan;M
 - `reports.controller.ts`: `generate()` nimmt jetzt `scope` (`month`/`year`) + `period` statt nur `month`.
 - Frontend (`LogsPage.tsx` Finanzamt-Tab): Monat/Jahr-Umschalter + Periodeneingabe vor "Jetzt erzeugen".
 
+## Nachtrag 2026-10-23: Dateiname
+
+Dateinamen waren `Besucherstatistik_<yyyy-MM|yyyy>.xlsx` - nicht als Finanzamt-Bericht erkennbar und Monat/Jahr nur an der Ziffernlänge unterscheidbar. Umbenannt in `reports.service.ts` (`monthlyFilename`/`yearlyFilename` + die beiden `*_FILE_PATTERN`-Regexe):
+
+- Monat: `Finanzamt_Monat_<yyyy-MM>.xlsx`, z.B. `Finanzamt_Monat_2026-10.xlsx`.
+- Jahr: `Finanzamt_Jahr_<yyyy>.xlsx`, z.B. `Finanzamt_Jahr_2026.xlsx`.
+
+Der Dateiname entsteht weiterhin automatisch (kein Nutzer-Input), `res.download()` übernimmt ihn unverändert in den `Content-Disposition`-Header. Alte, nach dem vorherigen Muster benannte Dateien im `reports/`-Ordner werden vom neuen Regex nicht mehr erkannt (verschwinden aus `GET /api/v1/reports`, bleiben aber unangetastet auf der Platte liegen) - betraf hier nur zwei Testdateien aus der vorherigen Verifikation, die gelöscht wurden.
+
 ## Context
 
 Der Verein braucht einen für das Finanzamt nachvollziehbaren Nachweis der Besucherzahlen (kein Geld - die App erfasst keine Zahlungen, `price_items` ist nur eine unverknüpfte Referenzliste, per Code-Audit bestätigt). Aktuell existieren nur manuelle, im Browser ausgelöste Tagesexporte (`ExportDialog.tsx`) für Mitglieder-Kennzeichen - kein automatischer, periodischer Bericht, keine Anbindung an ein Netzlaufwerk.
