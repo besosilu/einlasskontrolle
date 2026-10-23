@@ -13,6 +13,7 @@ import usersRoutes from './routes/users.routes.js';
 import systemRoutes from './routes/system.routes.js';
 import reportsRoutes from './routes/reports.routes.js';
 import backupRoutes from './routes/backup.routes.js';
+import settingsRoutes from './routes/settings.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requireAuth, requireAdmin, requireAdminOrBackupApiKey } from './middleware/requireAuth.js';
 import { runMigrations } from './lib/migrate.js';
@@ -41,6 +42,7 @@ app.use('/api/v1/users', requireAdmin, usersRoutes);
 app.use('/api/v1/system', requireAuth, systemRoutes);
 app.use('/api/v1/reports', requireAdmin, reportsRoutes);
 app.use('/api/v1/backup', requireAdminOrBackupApiKey, backupRoutes);
+app.use('/api/v1/settings', requireAdmin, settingsRoutes);
 
 const frontendDist = process.env['FRONTEND_DIST_PATH'] ?? path.join(__dirname, '../public');
 app.use(express.static(frontendDist));

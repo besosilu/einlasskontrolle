@@ -157,6 +157,16 @@ export async function runMigrations() {
         CREATE INDEX IF NOT EXISTS import_logs_source_idx ON import_logs(source);
       `,
     },
+    {
+      name: '011_app_settings',
+      sql: `
+        CREATE TABLE IF NOT EXISTS app_settings (
+          key VARCHAR(100) PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+      `,
+    },
   ];
 
   for (const migration of migrations) {
