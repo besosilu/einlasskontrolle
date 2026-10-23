@@ -10,6 +10,7 @@ import { formatDateTime } from '@/utils/dateUtils';
 // damit Polling/Klicks die useScanner-Tastatureingabe nie stören.
 export function AutoImportFeedWidget() {
   const [open, setOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const lastSeenIdRef = useRef<number | null>(null);
 
   const { data } = useQuery({
@@ -48,20 +49,63 @@ export function AutoImportFeedWidget() {
           {logs.length === 0 ? (
             <p className="px-4 py-6 text-center text-xs text-slate-400">Noch keine Importe</p>
           ) : (
-            <div className="max-h-64 divide-y divide-slate-50 overflow-y-auto">
-              {logs.map((log) => (
-                <div key={log.id} className="px-4 py-2.5">
-                  <p className="truncate text-xs font-medium text-slate-700">{log.filename}</p>
-                  <div className="mt-0.5 flex items-center justify-between text-xs text-slate-400">
-                    <span>{formatDateTime(log.importedAt)}</span>
-                    {log.errors.length > 0 ? (
-                      <span className="font-medium text-red-500">{log.errors.length} Fehler</span>
-                    ) : (
-                      <span className="text-emerald-600">+{log.recordsCreated} neu</span>
+            <div className="max-h-80 divide-y divide-slate-50 overflow-y-auto">
+              {logs.map((log) => {
+                const hasErrors = log.errors.length > 0;
+                const isExpanded = expandedId === log.id;
+                return (
+                  <div key={log.id}>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(isExpanded ? null : log.id)}
+                      className="flex w-full items-start justify-between gap-2 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium text-slate-700">{log.filename}</p>
+                        <p className="text-xs text-slate-400">{formatDateTime(log.importedAt)}</p>
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-1">
+                        {hasErrors ? (
+                          <span className="text-xs font-medium text-red-500">{log.errors.length} Fehler</span>
+                        ) : (
+                          <span className="text-xs font-medium text-emerald-600">+{log.recordsCreated} neu</span>
+                        )}
+                        {isExpanded ? (
+                          <ChevronUp className="h-3 w-3 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3 text-slate-400" />
+                        )}
+                      </div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="px-4 pb-3">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
+                          {log.entriesCreated !== null && (
+                            <span className="font-medium text-indigo-600">{log.entriesCreated} Eintritte</span>
+                          )}
+                          <span className="font-medium text-emerald-600">+{log.recordsCreated} neu</span>
+                          <span className="font-medium text-blue-600">~{log.recordsUpdated} akt.</span>
+                        </div>
+
+                        {hasErrors && (
+                          <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5">
+                            <p className="mb-1.5 text-xs font-semibold text-red-700">Fehlerdetails</p>
+                            <div className="max-h-32 space-y-1 overflow-y-auto">
+                              {log.errors.map((e, i) => (
+                                <div key={i} className="text-xs text-red-600">
+                                  <span className="font-medium">Zeile {e.line}:</span> {e.reason}
+                                  {e.content && <span className="ml-1 font-mono text-red-400">({e.content})</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

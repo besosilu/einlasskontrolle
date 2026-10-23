@@ -163,6 +163,18 @@ export async function importMembersFromCsv(
   };
 }
 
+// Protokolliert eine komplett fehlgeschlagene Datei (z.B. ungültiger Dateiname oder eine
+// Exception, die nicht schon als Zeilenfehler in importMembersFromCsv() abgefangen wurde) als
+// eigenen import_logs-Eintrag, damit sie im UI genauso sichtbar ist wie ein normaler Import.
+export async function logImportFailure(filename: string, reason: string, source: 'manual' | 'auto' = 'auto') {
+  const [log] = await sql<{ id: number }[]>`
+    INSERT INTO import_logs (filename, records_total, records_created, records_updated, records_skipped, entries_created, errors, source)
+    VALUES (${filename}, 0, 0, 0, 0, 0, ${JSON.stringify([{ line: 0, content: '', reason }])}, ${source})
+    RETURNING id
+  `;
+  return log.id;
+}
+
 type ImportLogRow = {
   id: number; filename: string; imported_at: Date;
   records_total: number; records_created: number; records_updated: number; records_skipped: number;

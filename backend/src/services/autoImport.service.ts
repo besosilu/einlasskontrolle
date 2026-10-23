@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { importMembersFromCsv } from './import.service.js';
+import { importMembersFromCsv, logImportFailure } from './import.service.js';
 
 const INBOX_DIR = process.env['AUTO_IMPORT_INBOX_DIR'] ?? '/app/inbox';
 const VERARBEITET_DIR = path.join(INBOX_DIR, 'verarbeitet');
@@ -38,6 +38,16 @@ export function parseInboxFilename(filename: string): ParsedInboxFilename {
 function isStable(filePath: string): boolean {
   const stat = fs.statSync(filePath);
   return Date.now() - stat.mtimeMs >= STABLE_THRESHOLD_MS;
+}
+
+// logImportFailure() selbst darf nie den Datei-Move verhindern - ein DB-Fehler beim Protokollieren
+// ist hier zweitrangig gegenüber dem eigentlichen Ziel, die Datei aus der Inbox zu bekommen.
+async function logFailureSafely(filename: string, reason: string): Promise<void> {
+  try {
+    await logImportFailure(filename, reason, 'auto');
+  } catch (err) {
+    console.error(`[autoImport] Konnte Fehlerprotokoll für ${filename} nicht schreiben:`, err);
+  }
 }
 
 function moveTo(filePath: string, targetDir: string, filename: string): void {
@@ -88,8 +98,10 @@ export async function processInboxOnce(): Promise<void> {
     const filePath = path.join(INBOX_DIR, candidate.filename);
     try {
       if (candidate.kind === 'invalid-date') {
+        const reason = `Ungültiges Kalenderdatum im Dateinamen: ${candidate.filename}`;
+        await logFailureSafely(candidate.filename, reason);
         moveTo(filePath, FEHLER_DIR, candidate.filename);
-        console.warn(`[autoImport] Ungültiges Datum im Dateinamen, verschoben nach fehler/: ${candidate.filename}`);
+        console.warn(`[autoImport] ${reason} - verschoben nach fehler/`);
         continue;
       }
 
@@ -99,6 +111,8 @@ export async function processInboxOnce(): Promise<void> {
       moveTo(filePath, VERARBEITET_DIR, candidate.filename);
     } catch (err) {
       console.error(`[autoImport] Fehler bei ${candidate.filename}:`, err);
+      const reason = err instanceof Error ? err.message : 'Unbekannter Fehler beim Verarbeiten der Datei';
+      await logFailureSafely(candidate.filename, reason);
       try {
         moveTo(filePath, FEHLER_DIR, candidate.filename);
       } catch {
