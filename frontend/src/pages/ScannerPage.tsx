@@ -12,6 +12,7 @@ import { ManualWarningDialog } from '@/components/entry/ManualWarningDialog';
 import { ExportDialog } from '@/components/entry/ExportDialog';
 import { TrialWarningDialog } from '@/components/entry/TrialWarningDialog';
 import { DashboardCards } from '@/components/dashboard/DashboardCards';
+import { AutoImportFeedWidget } from '@/components/scanner/AutoImportFeedWidget';
 import { showToast } from '@/components/ui/Toast';
 import { membersApi } from '@/api/members';
 import type { Warning, EntryResult } from '@/types';
@@ -237,6 +238,8 @@ export function ScannerPage() {
           setTimeout(() => setScanFeedback(null), 2000);
         }}
       />
+
+      <AutoImportFeedWidget />
     </div>
   );
 }

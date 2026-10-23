@@ -13,8 +13,8 @@ export const importApi = {
       .then((r) => r.data);
   },
 
-  getLogs: (limit = 20, offset = 0) =>
-    client.get<ImportLogsResult>('/import/logs', { params: { limit, offset } }).then((r) => r.data),
+  getLogs: (limit = 20, offset = 0, source?: 'manual' | 'auto') =>
+    client.get<ImportLogsResult>('/import/logs', { params: { limit, offset, source } }).then((r) => r.data),
 
   getLogById: (id: number) =>
     client.get<ImportLog>(`/import/logs/${id}`).then((r) => r.data),

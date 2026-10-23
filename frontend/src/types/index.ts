@@ -155,6 +155,7 @@ export interface ImportLog {
   recordsSkipped: number;
   entriesCreated: number | null;
   errors: { line: number; content: string; reason: string }[];
+  source: 'manual' | 'auto';
 }
 
 export interface ImportLogsResult {

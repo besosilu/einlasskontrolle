@@ -96,6 +96,29 @@ Mitgliedsnummer;Name;Vorname
 
 Die Ergebnisse (Eintritte erfasst, neue Mitglieder, aktualisiert, bereits erfasst, Fehler) stehen im Importdialog und im Import-Protokoll.
 
+## Automatischer Einlass-Import vom Netzlaufwerk
+
+Zusätzlich zum manuellen CSV-Import im Dialog erkennt die App automatisch im Hintergrund Dateien im Format `dd-mm-yyyy.txt` (gleicher Inhalt `Mitgliedsnummer;Name;Vorname` wie oben), die in einem lokalen `inbox/`-Ordner erscheinen - ohne das Scannen oder die manuelle Erfassung zu beeinträchtigen.
+
+- **Takt:** alle 5 Minuten, maximal 20 Dateien pro Durchlauf (älteste zuerst), weitere folgen im nächsten Durchlauf.
+- **Race-Schutz:** eine Datei wird erst verarbeitet, wenn seit dem letzten Schreibzugriff mindestens 60 Sekunden vergangen sind (verhindert das Lesen einer noch nicht vollständig geschriebenen Datei).
+- **Nach der Verarbeitung:** die Datei wandert nach `inbox/verarbeitet/` (auch bei Teil-Fehlern in einzelnen Zeilen, die landen wie beim manuellen Import in der Fehlerliste des Protokolls) oder nach `inbox/fehler/` (bei einem ungültigen Kalenderdatum im Dateinamen wie `31-02-2026.txt`, oder wenn die Verarbeitung selbst fehlschlägt) - **nichts wird gelöscht**.
+- Dateien, die nicht dem Muster `dd-mm-yyyy.txt` entsprechen, werden ignoriert und bleiben unangetastet liegen (könnten aus anderem Grund im Ordner sein).
+- Auf der Scanner-Seite zeigt ein kleines Widget unten links die letzten automatischen Importe; es erscheint erst, sobald der erste Auto-Import gelaufen ist.
+
+Da Docker Desktop einen UNC-Netzlaufwerkpfad nicht zuverlässig direkt einbinden kann, ist die Zustellung wie bei den Finanzamt-Berichten in zwei Schritte aufgeteilt - hier in umgekehrter Richtung (Netzlaufwerk → lokal statt lokal → Netzlaufwerk):
+
+1. Der Container liest/schreibt ausschließlich im lokalen `inbox/`-Ordner.
+2. [`sync-inbox-from-network.ps1`](sync-inbox-from-network.ps1) kopiert per `robocopy` vom Netzlaufwerk in diesen Ordner (kein `/MOV` - die Originaldatei bleibt auf dem Netzlaufwerk erhalten, auch wenn die Verarbeitung im Container später fehlschlägt) - `$NetworkPath` im Skript anpassen, dann als Windows-Aufgabe registrieren:
+
+```powershell
+schtasks /create /tn "EinlassInboxSync" /tr "powershell -ExecutionPolicy Bypass -File C:\...\sync-inbox-from-network.ps1" /sc minute /mo 10
+```
+
+Auch hier in der Aufgabenplanung **"Computer zum Ausführen dieser Aufgabe aufwecken"** aktivieren, falls der PC zeitweise im Standby ist.
+
+Import-Protokoll nach Quelle filtern: `GET /api/v1/import/logs?source=auto` (bzw. `?source=manual`); ohne Parameter liefert die Route weiterhin alle Einträge.
+
 ## KI-Auswertung (Chat in den Statistiken)
 
 Im Reiter **Statistiken → Chat** lassen sich Auswertungen in normaler Sprache abfragen, z. B. „Vergleiche September und Oktober“ oder „Wie viele Schnupperer waren pro Monat da?“. Die Antwort kommt als kurzer Text plus Tabelle und Diagramm.
@@ -191,7 +214,7 @@ Alle Routen unter `/api/v1`, außer Login und Registrierung mit Bearer-Token.
 | Einlässe | `GET /entries?date=`, `POST /entries`, `PATCH /entries/:id/notes`, `DELETE /entries/:id`, `GET /entries/today/count?date=` |
 | Export | `GET /entries/export/summary?date=`, `GET /entries/export?date=&type=new-card\|trial\|pre-swim` |
 | Mitglieder | `GET /members`, `GET /members/list`, `POST/PUT /members`, `PATCH /members/:id/flags` |
-| Import | `POST /import/members`, `GET /import/logs` |
+| Import | `POST /import/members`, `GET /import/logs?source=manual\|auto` |
 | Statistik | `GET /stats/dashboard?date=`, `/stats/workload`, `/stats/by-day`, `/stats/by-member/:id`, `/stats/summary`, `/stats/new-card` |
 | Chat | `GET /stats/chat/status`, `POST /stats/chat` (`messages[]`, `today`) |
 | System | `GET /system/time` |

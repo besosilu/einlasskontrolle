@@ -1,7 +1,8 @@
 # Plan: Automatischer Hintergrund-Import täglicher "Einlass"-Dateien vom Netzlaufwerk
 
-**Status:** genehmigt, Umsetzung noch nicht begonnen (Finanzamt-Bericht wird zuerst fertiggestellt)
+**Status:** umgesetzt - manuell gegen Testcontainer verifiziert; echter UNC-Sync noch nicht mit realem Netzlaufwerk getestet
 **Erstellt:** 2026-10-18
+**Umgesetzt:** 2026-10-23
 
 ## Context
 

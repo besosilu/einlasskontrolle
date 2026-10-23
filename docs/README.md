@@ -17,5 +17,5 @@
 |---|---|
 | [Chat mit den Statistiken](plans/2026-10-statistik-chat.md) | umgesetzt (Live-Test mit API-Key offen) |
 | [Finanzamt-Bericht auf Netzlaufwerk](plans/2026-10-finanzamt-bericht.md) | umgesetzt |
-| [Einlass-Auto-Import vom Netzlaufwerk](plans/2026-10-einlass-auto-import.md) | genehmigt, Umsetzung noch nicht begonnen |
+| [Einlass-Auto-Import vom Netzlaufwerk](plans/2026-10-einlass-auto-import.md) | umgesetzt |
 | [Backup-Export + MCP-Import in zentrale DB](plans/2026-10-backup-export-mcp.md) | genehmigt, Umsetzung begonnen |
