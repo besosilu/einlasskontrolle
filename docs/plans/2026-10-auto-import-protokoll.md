@@ -1,8 +1,12 @@
 # Plan: Sichtbares Protokoll für Auto-Import-Dateien (inkl. Fehlerfälle) im Scanner-Widget
 
-**Status:** genehmigt, Umsetzung begonnen
+**Status:** umgesetzt - manuell gegen Testcontainer verifiziert
 **Erstellt:** 2026-10-23
 **Bezug:** Ergänzt `docs/plans/2026-10-einlass-auto-import.md`
+
+## Nachtrag: gefundener Bestandsfehler beim Verifizieren
+
+Bei der Verifikation fiel auf, dass `import_logs.errors` (jsonb-Spalte) von `postgres.js` beim erneuten Auslesen aus der DB als roher JSON-**String** statt als geparstes Array zurückkommt (bestätigt per direkter Abfrage inkl. `pg_typeof`, kein Spalten-/Schema-Problem - ein Verhalten des Treibers bei dieser Query-Form). Betraf `getImportLogs()`/`getImportLogById()` in `import.service.ts` - und damit sowohl das neue Widget als auch die bereits bestehende Fehler-Aufklapp-Ansicht in `LogsPage.tsx`, die beide `log.errors.map(...)` aufrufen. Nicht vorher aufgefallen, weil die einzige bisherige Stelle, die Fehler direkt nach einem Import zeigt (der Upload-Dialog), die frischen In-Memory-Daten direkt aus `importMembersFromCsv()` nutzt, nie neu aus der DB lädt. Behoben durch eine neue `parseErrors()`-Hilfsfunktion in `import.service.ts`, die `errors` robust parst (String → `JSON.parse`, sonst durchreichen), angewendet in `mapImportLog()` und `getImportLogById()`.
 
 ## Context
 
