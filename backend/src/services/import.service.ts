@@ -181,6 +181,13 @@ type ImportLogRow = {
   entries_created: number | null; errors: unknown; source: string;
 };
 
+// postgres.js liefert die jsonb-Spalte `errors` bei dieser Query-Form als rohen JSON-String statt
+// als bereits geparstes Array zurück - hier robust in beide Richtungen behandeln.
+function parseErrors(raw: unknown): { line: number; content: string; reason: string }[] {
+  if (typeof raw === 'string') return JSON.parse(raw);
+  return (raw as { line: number; content: string; reason: string }[] | null) ?? [];
+}
+
 function mapImportLog(r: ImportLogRow) {
   return {
     id: r.id,
@@ -191,7 +198,7 @@ function mapImportLog(r: ImportLogRow) {
     recordsUpdated: r.records_updated,
     recordsSkipped: r.records_skipped,
     entriesCreated: r.entries_created,
-    errors: r.errors,
+    errors: parseErrors(r.errors),
     source: r.source,
   };
 }
@@ -243,7 +250,7 @@ export async function getImportLogById(id: number) {
     recordsUpdated: log.records_updated,
     recordsSkipped: log.records_skipped,
     entriesCreated: log.entries_created,
-    errors: log.errors,
+    errors: parseErrors(log.errors),
     memberLinks: links.map((l) => ({
       memberId: l.member_id,
       action: l.action,
