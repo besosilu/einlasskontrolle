@@ -35,9 +35,10 @@ ENV PGDATA=/var/lib/postgresql/data \
     NODE_ENV=production \
     PORT=3001 \
     REPORTS_DIR=/app/reports \
-    BACKUP_DIR=/app/backups
+    BACKUP_DIR=/app/backups \
+    AUTO_IMPORT_INBOX_DIR=/app/inbox
 
-RUN mkdir -p /app/reports /app/backups
+RUN mkdir -p /app/reports /app/backups /app/inbox/verarbeitet /app/inbox/fehler
 
 VOLUME ["/var/lib/postgresql/data"]
 EXPOSE 3001

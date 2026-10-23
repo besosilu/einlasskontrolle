@@ -18,6 +18,7 @@ import { requireAuth, requireAdmin, requireAdminOrBackupApiKey } from './middlew
 import { runMigrations } from './lib/migrate.js';
 import { ensureAdminUser } from './services/auth.service.js';
 import { startMonthlyReportScheduler } from './services/reports.service.js';
+import { startAutoImportScheduler } from './services/autoImport.service.js';
 
 const app = express();
 const PORT = process.env['PORT'] ?? 3001;
@@ -53,6 +54,7 @@ runMigrations()
   .then(() => ensureAdminUser())
   .then(() => {
     startMonthlyReportScheduler();
+    startAutoImportScheduler();
     app.listen(PORT, () => {
       console.log(`Backend läuft auf Port ${PORT}`);
     });
