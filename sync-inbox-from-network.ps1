@@ -20,6 +20,27 @@ function Write-Log($message) {
     Write-Output $line
 }
 
+# Herzschlag fuer die Statusanzeige der Web-UI: die App liest inbox/.sync-status.json und zeigt, ob und
+# wann dieses Skript zuletzt gelaufen ist. Ein Fehler beim Schreiben darf den Sync nie verhindern.
+function Write-SyncStatus([bool]$ok, [string]$message) {
+    try {
+        if (-not (Test-Path -Path $TargetPath)) {
+            New-Item -ItemType Directory -Path $TargetPath -Force | Out-Null
+        }
+        $status = [ordered]@{
+            lastRun = (Get-Date).ToString('o')
+            ok      = $ok
+            message = $message
+        } | ConvertTo-Json
+        $statusFile = Join-Path $TargetPath ".sync-status.json"
+        $tmp = "$statusFile.tmp"
+        [System.IO.File]::WriteAllText($tmp, $status, (New-Object System.Text.UTF8Encoding($false)))
+        Move-Item -Path $tmp -Destination $statusFile -Force
+    } catch {
+        Write-Log "[WARNUNG] Statusdatei konnte nicht geschrieben werden: $_"
+    }
+}
+
 if ($NetworkPath) {
     Write-Log "[INFO] Netzlaufwerk-Pfad aus -NetworkPath-Parameter: $NetworkPath"
 } else {
@@ -44,6 +65,7 @@ if (-not $NetworkPath) {
 
 if (-not (Test-Path -Path $NetworkPath)) {
     Write-Log "[FEHLER] Netzlaufwerk nicht erreichbar: $NetworkPath"
+    Write-SyncStatus $false "Netzlaufwerk nicht erreichbar: $NetworkPath"
     exit 1
 }
 
@@ -60,8 +82,10 @@ $exitCode = $LASTEXITCODE
 # Robocopy-Exitcodes 0-7 sind Erfolg (mit Details), erst 8+ ist ein echter Fehler.
 if ($exitCode -ge 8) {
     Write-Log "[FEHLER] robocopy fehlgeschlagen, Exitcode $exitCode"
+    Write-SyncStatus $false "robocopy fehlgeschlagen, Exitcode $exitCode"
     exit 1
 }
 
 Write-Log "[OK] Sync abgeschlossen, robocopy-Exitcode $exitCode"
+Write-SyncStatus $true "Sync abgeschlossen (robocopy-Exitcode $exitCode)"
 exit 0

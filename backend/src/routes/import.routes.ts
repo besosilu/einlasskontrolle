@@ -22,6 +22,7 @@ const upload = multer({
 });
 
 router.post('/members', upload.array('files', 200), ctrl.importMembers);
+router.get('/auto-status', ctrl.getAutoStatus);
 router.get('/logs', ctrl.getLogs);
 router.get('/logs/:id', ctrl.getLogById);
 router.delete('/logs/:id', ctrl.deleteLog);

@@ -104,7 +104,9 @@ Zusätzlich zum manuellen CSV-Import im Dialog erkennt die App automatisch im Hi
 - **Race-Schutz:** eine Datei wird erst verarbeitet, wenn seit dem letzten Schreibzugriff mindestens 60 Sekunden vergangen sind (verhindert das Lesen einer noch nicht vollständig geschriebenen Datei).
 - **Nach der Verarbeitung:** die Datei wandert nach `inbox/verarbeitet/` (auch bei Teil-Fehlern in einzelnen Zeilen, die landen wie beim manuellen Import in der Fehlerliste des Protokolls) oder nach `inbox/fehler/` (bei einem ungültigen Kalenderdatum im Dateinamen wie `31-02-2026.txt`, oder wenn die Verarbeitung selbst fehlschlägt) - **nichts wird gelöscht**.
 - Dateien, die nicht dem Muster `dd-mm-yyyy.txt` entsprechen, werden ignoriert und bleiben unangetastet liegen (könnten aus anderem Grund im Ordner sein).
-- Auf der Scanner-Seite zeigt ein kleines Widget unten links die letzten automatischen Importe; es erscheint erst, sobald der erste Auto-Import gelaufen ist.
+- **Status und Schalter:** Auf der Scanner-Seite zeigt ein Widget unten links **immer** den Zustand des Auto-Imports: **Aktiv**, **Verarbeitet gerade** (mit Fortschritt, Datei und Balken) oder **Nicht aktiv**. Aufgeklappt zeigt es die letzte und nächste Prüfung, wann sich das Sync-Skript zuletzt gemeldet hat, die Dateien im Eingang (wartend, bereit, ignoriert, ungültiges Datum), das Archiv sowie die letzten automatischen Importe als Feed. Gelbe Hinweise nennen mögliche Ursachen, z. B. dass die Windows-Aufgabe nie gelaufen ist oder Dateien wegen ihres Namens ignoriert werden.
+- **Ein- und ausschalten:** unter **Einstellungen** (nur Admins) mit dem Schalter. Ausgeschaltet verarbeitet der Dienst nichts mehr und lässt alle Dateien liegen; der neue Zustand gilt sofort. Ohne gespeicherten Wert ist der Auto-Import an. Dort startet **Jetzt prüfen** außerdem sofort einen Durchlauf, ohne die 5 Minuten abzuwarten.
+- **Sync-Herzschlag:** Das Sync-Skript schreibt nach jedem Lauf `inbox/.sync-status.json` (Zeitpunkt, Erfolg, Meldung). Daran erkennt die App, ob die Windows-Aufgabe eingerichtet ist und läuft; nach mehr als einer Stunde ohne Meldung erscheint ein Hinweis.
 
 Da Docker Desktop einen UNC-Netzlaufwerkpfad nicht zuverlässig direkt einbinden kann, ist die Zustellung wie bei den Finanzamt-Berichten in zwei Schritte aufgeteilt - hier in umgekehrter Richtung (Netzlaufwerk → lokal statt lokal → Netzlaufwerk):
 
@@ -223,4 +225,5 @@ Alle Routen unter `/api/v1`, außer Login und Registrierung mit Bearer-Token.
 | Benutzer (Admin) | `GET /users`, Registrierungen freigeben oder ablehnen, sperren, löschen |
 | Berichte (Admin) | `GET /reports`, `POST /reports/generate?scope=month\|year&period=`, `GET /reports/:filename/download` |
 | Backup-Sicherung (Admin oder `X-Backup-Api-Key`) | `GET /backup`, `POST /backup/generate`, `GET /backup/:filename/download` |
-| Einstellungen (Admin) | `GET /settings/auto-import`, `PUT /settings/auto-import` (`networkPath`) |
+| Einstellungen (Admin) | `GET /settings/auto-import`, `PUT /settings/auto-import` (`networkPath` und/oder `enabled`), `POST /settings/auto-import/run` |
+| Auto-Import-Status | `GET /import/auto-status` (alle angemeldeten Benutzer) |

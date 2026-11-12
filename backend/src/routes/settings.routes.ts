@@ -5,5 +5,6 @@ const router = Router();
 
 router.get('/auto-import', ctrl.getAutoImport);
 router.put('/auto-import', ctrl.setAutoImport);
+router.post('/auto-import/run', ctrl.runAutoImport);
 
 export default router;

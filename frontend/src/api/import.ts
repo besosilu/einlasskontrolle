@@ -1,5 +1,5 @@
 import client from './client';
-import type { ImportBatchResult, ImportLog, ImportLogsResult } from '../types';
+import type { AutoImportStatus, ImportBatchResult, ImportLog, ImportLogsResult } from '../types';
 
 export const importApi = {
   importMembers: (files: File[], entryDate?: string) => {
@@ -21,4 +21,7 @@ export const importApi = {
 
   deleteLog: (id: number) =>
     client.delete(`/import/logs/${id}`),
+
+  getAutoStatus: () =>
+    client.get<AutoImportStatus>('/import/auto-status').then((r) => r.data),
 };

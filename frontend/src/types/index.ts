@@ -179,4 +179,35 @@ export interface BackupFile {
 
 export interface AutoImportSettings {
   networkPath: string | null;
+  enabled: boolean;
+}
+
+export interface AutoImportInboxFile {
+  filename: string;
+  state: 'waiting' | 'ready' | 'invalid-date' | 'ignored';
+  secondsUntilReady: number | null;
+  note: string | null;
+}
+
+export interface AutoImportStatus {
+  enabled: boolean;
+  state: 'disabled' | 'processing' | 'active';
+  networkPath: string | null;
+  intervalSeconds: number;
+  nextCheckAt: string | null;
+  lastCheck: {
+    at: string;
+    trigger: 'timer' | 'manual' | 'start';
+    processed: number;
+    failed: number;
+    skippedBecauseDisabled: boolean;
+  } | null;
+  processing: { currentFile: string | null; done: number; total: number } | null;
+  inbox: {
+    files: AutoImportInboxFile[];
+    archive: { processed: number; failed: number };
+  };
+  sync: { lastRunAt: string; ok: boolean; message: string | null } | null;
+  lastImport: { id: number; filename: string; importedAt: string; hadErrors: boolean } | null;
+  warnings: string[];
 }

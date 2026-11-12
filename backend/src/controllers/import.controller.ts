@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import * as importService from '../services/import.service.js';
+import { getAutoImportStatus } from '../services/autoImport.service.js';
 
 // Erkennt ein Datum im Format yyyy-mm-dd irgendwo im Dateinamen, z.B. "scan_2026-09-15.csv"
 function extractDateFromFilename(filename: string): string | undefined {
@@ -75,6 +76,15 @@ export async function getLogById(req: Request, res: Response, next: NextFunction
     const log = await importService.getImportLogById(Number(req.params['id']));
     if (!log) return res.status(404).json({ error: 'Import-Log nicht gefunden' });
     res.json(log);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Status des Auto-Imports (für das Feed-Widget auf der Scanner-Seite; lesend, für alle angemeldeten Benutzer)
+export async function getAutoStatus(_req: Request, res: Response, next: NextFunction) {
+  try {
+    res.json(await getAutoImportStatus());
   } catch (err) {
     next(err);
   }
