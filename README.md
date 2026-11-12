@@ -98,28 +98,16 @@ Die Ergebnisse (Eintritte erfasst, neue Mitglieder, aktualisiert, bereits erfass
 
 ## Automatischer Einlass-Import vom Netzlaufwerk
 
-Zusätzlich zum manuellen CSV-Import im Dialog erkennt die App automatisch im Hintergrund Dateien im Format `dd-mm-yyyy.txt` (gleicher Inhalt `Mitgliedsnummer;Name;Vorname` wie oben), die in einem lokalen `inbox/`-Ordner erscheinen - ohne das Scannen oder die manuelle Erfassung zu beeinträchtigen.
+Zusätzlich zum manuellen CSV-Import im Dialog holt die App Einlass-Dateien (gleicher Inhalt `Mitgliedsnummer;Name;Vorname` wie oben) **selbst im Hintergrund** aus einem Quellordner und importiert sie - ohne Windows-Aufgabe, ohne Skript, ohne das Scannen oder die manuelle Erfassung zu beeinträchtigen. Der Scheduler läuft im Backend (`setInterval`, Start beim Hochfahren des Containers).
 
-- **Takt:** alle 5 Minuten, maximal 20 Dateien pro Durchlauf (älteste zuerst), weitere folgen im nächsten Durchlauf.
-- **Race-Schutz:** eine Datei wird erst verarbeitet, wenn seit dem letzten Schreibzugriff mindestens 60 Sekunden vergangen sind (verhindert das Lesen einer noch nicht vollständig geschriebenen Datei).
-- **Nach der Verarbeitung:** die Datei wandert nach `inbox/verarbeitet/` (auch bei Teil-Fehlern in einzelnen Zeilen, die landen wie beim manuellen Import in der Fehlerliste des Protokolls) oder nach `inbox/fehler/` (bei einem ungültigen Kalenderdatum im Dateinamen wie `31-02-2026.txt`, oder wenn die Verarbeitung selbst fehlschlägt) - **nichts wird gelöscht**.
-- Dateien, die nicht dem Muster `dd-mm-yyyy.txt` entsprechen, werden ignoriert und bleiben unangetastet liegen (könnten aus anderem Grund im Ordner sein).
-- **Status und Schalter:** Auf der Scanner-Seite zeigt ein Widget unten links **immer** den Zustand des Auto-Imports: **Aktiv**, **Verarbeitet gerade** (mit Fortschritt, Datei und Balken) oder **Nicht aktiv**. Aufgeklappt zeigt es die letzte und nächste Prüfung, wann sich das Sync-Skript zuletzt gemeldet hat, die Dateien im Eingang (wartend, bereit, ignoriert, ungültiges Datum), das Archiv sowie die letzten automatischen Importe als Feed. Gelbe Hinweise nennen mögliche Ursachen, z. B. dass die Windows-Aufgabe nie gelaufen ist oder Dateien wegen ihres Namens ignoriert werden.
-- **Ein- und ausschalten:** unter **Einstellungen** (nur Admins) mit dem Schalter. Ausgeschaltet verarbeitet der Dienst nichts mehr und lässt alle Dateien liegen; der neue Zustand gilt sofort. Ohne gespeicherten Wert ist der Auto-Import an. Dort startet **Jetzt prüfen** außerdem sofort einen Durchlauf, ohne die 5 Minuten abzuwarten.
-- **Sync-Herzschlag:** Das Sync-Skript schreibt nach jedem Lauf `inbox/.sync-status.json` (Zeitpunkt, Erfolg, Meldung). Daran erkennt die App, ob die Windows-Aufgabe eingerichtet ist und läuft; nach mehr als einer Stunde ohne Meldung erscheint ein Hinweis.
-
-Da Docker Desktop einen UNC-Netzlaufwerkpfad nicht zuverlässig direkt einbinden kann, ist die Zustellung wie bei den Finanzamt-Berichten in zwei Schritte aufgeteilt - hier in umgekehrter Richtung (Netzlaufwerk → lokal statt lokal → Netzlaufwerk):
-
-1. Der Container liest/schreibt ausschließlich im lokalen `inbox/`-Ordner.
-2. [`sync-inbox-from-network.ps1`](sync-inbox-from-network.ps1) kopiert per `robocopy` vom Netzlaufwerk in diesen Ordner (kein `/MOV` - die Originaldatei bleibt auf dem Netzlaufwerk erhalten, auch wenn die Verarbeitung im Container später fehlschlägt), dann als Windows-Aufgabe registrieren:
-
-```powershell
-schtasks /create /tn "EinlassInboxSync" /tr "powershell -ExecutionPolicy Bypass -File C:\...\sync-inbox-from-network.ps1" /sc minute /mo 10
-```
-
-Auch hier in der Aufgabenplanung **"Computer zum Ausführen dieser Aufgabe aufwecken"** aktivieren, falls der PC zeitweise im Standby ist.
-
-**Netzlaufwerk-Pfad konfigurieren:** unter **Einstellungen** (nur Admins) in der UI eintragen und speichern - das Skript liest den Wert bei jedem Lauf automatisch aus einer Konfigurationsdatei, die der Container im `inbox/`-Ordner ablegt, kein Bearbeiten des Skripts mehr nötig. Ein explizit übergebener `-NetworkPath`-Parameter (z.B. für einen Testlauf) hat weiterhin Vorrang vor dem UI-Wert; ist weder das eine noch das andere gesetzt, nutzt das Skript einen Beispiel-Pfad als Fallback.
+- **Dateinamen:** `yyyy-mm-dd.txt` (z. B. `2026-09-24.txt`) und `dd-mm-yyyy.txt`. Das Datum im Namen ist das Einlassdatum. Andere Dateinamen werden ignoriert und bleiben unangetastet.
+- **Quellordner:** im Container `/app/netzlaufwerk` (schreibgeschützt). Standardmäßig ist das der Ordner `netzlaufwerk/` neben der `docker-compose.yml`; mit `AUTO_IMPORT_SOURCE` in der `.env` lässt sich ein anderer Ordner einbinden. Eine Windows-Freigabe bindet `docker-compose.netzlaufwerk.yml` direkt per SMB ein (`docker compose -f docker-compose.yml -f docker-compose.netzlaufwerk.yml up -d`, Zugangsdaten `NETZLAUFWERK_SHARE`, `NETZLAUFWERK_USER`, `NETZLAUFWERK_PASSWORD` in der `.env`). Die Originaldateien bleiben unverändert.
+- **Ältere Dateien:** `AUTO_IMPORT_FROM_DATE=yyyy-MM-dd` in der `.env` übernimmt nur Dateien ab diesem Datum - sinnvoll, wenn der Ordner viele bereits importierte Altdateien enthält. Bereits verarbeitete Dateien werden nie erneut übernommen (Abgleich über `inbox/verarbeitet/` und `inbox/fehler/`).
+- **Takt:** alle 5 Minuten: neue Dateien in `inbox/` kopieren, dann importieren (maximal 20 Dateien pro Durchlauf, älteste zuerst).
+- **Race-Schutz:** eine Datei wird erst übernommen und verarbeitet, wenn seit dem letzten Schreibzugriff mindestens 60 Sekunden vergangen sind.
+- **Nach der Verarbeitung:** die Kopie wandert nach `inbox/verarbeitet/` (auch bei Teil-Fehlern in einzelnen Zeilen, die landen wie beim manuellen Import in der Fehlerliste des Protokolls) oder nach `inbox/fehler/` (ungültiges Kalenderdatum im Namen wie `2026-02-31.txt`, oder die Verarbeitung schlägt fehl) - **nichts wird gelöscht**.
+- **Status und Schalter:** Auf der Scanner-Seite zeigt ein Widget unten links **immer** den Zustand: **Aktiv**, **Verarbeitet gerade** (mit Fortschritt, Datei und Balken) oder **Nicht aktiv**. Aufgeklappt zeigt es die letzte und nächste Prüfung, ob der Quellordner erreichbar ist, die Dateien im Eingang, das Archiv und die letzten automatischen Importe als Feed. Gelbe Hinweise nennen Ursachen, z. B. dass der Quellordner nicht eingebunden ist.
+- **Ein- und ausschalten:** unter **Einstellungen** (nur Admins) mit dem Schalter. Ausgeschaltet holt und verarbeitet der Dienst nichts; der Zustand gilt sofort. Ohne gespeicherten Wert ist der Auto-Import an. **Jetzt prüfen** startet sofort einen Durchlauf.
 
 Import-Protokoll nach Quelle filtern: `GET /api/v1/import/logs?source=auto` (bzw. `?source=manual`); ohne Parameter liefert die Route weiterhin alle Einträge.
 
@@ -225,5 +213,5 @@ Alle Routen unter `/api/v1`, außer Login und Registrierung mit Bearer-Token.
 | Benutzer (Admin) | `GET /users`, Registrierungen freigeben oder ablehnen, sperren, löschen |
 | Berichte (Admin) | `GET /reports`, `POST /reports/generate?scope=month\|year&period=`, `GET /reports/:filename/download` |
 | Backup-Sicherung (Admin oder `X-Backup-Api-Key`) | `GET /backup`, `POST /backup/generate`, `GET /backup/:filename/download` |
-| Einstellungen (Admin) | `GET /settings/auto-import`, `PUT /settings/auto-import` (`networkPath` und/oder `enabled`), `POST /settings/auto-import/run` |
+| Einstellungen (Admin) | `GET /settings/auto-import`, `PUT /settings/auto-import` (`enabled`), `POST /settings/auto-import/run` |
 | Auto-Import-Status | `GET /import/auto-status` (alle angemeldeten Benutzer) |

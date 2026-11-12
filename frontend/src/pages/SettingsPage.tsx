@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsApi } from '@/api/settings';
 import { useAutoImportStatus } from '@/hooks/useAutoImportStatus';
@@ -27,7 +26,6 @@ export function SettingsPage() {
 // Weitere Einstellungen können künftig als weitere Sektionen hier ergänzt werden.
 function AutoImportSection() {
   const queryClient = useQueryClient();
-  const [networkPath, setNetworkPath] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['settings', 'auto-import'],
@@ -35,23 +33,10 @@ function AutoImportSection() {
   });
   const { data: status } = useAutoImportStatus();
 
-  useEffect(() => {
-    if (data?.networkPath) setNetworkPath(data.networkPath);
-  }, [data]);
-
   const refreshStatus = () => {
     queryClient.invalidateQueries({ queryKey: ['settings', 'auto-import'] });
     queryClient.invalidateQueries({ queryKey: ['auto-import-status'] });
   };
-
-  const saveMutation = useMutation({
-    mutationFn: () => settingsApi.setAutoImport({ networkPath }),
-    onSuccess: () => {
-      showToast('success', 'Netzlaufwerk-Pfad gespeichert.');
-      refreshStatus();
-    },
-    onError: (err) => showToast('error', errorMessage(err, 'Speichern fehlgeschlagen.')),
-  });
 
   const toggleMutation = useMutation({
     mutationFn: (enabled: boolean) => settingsApi.setAutoImport({ enabled }),
@@ -79,8 +64,8 @@ function AutoImportSection() {
         <div>
           <p className="text-sm font-semibold text-slate-700">Automatischer Einlass-Import</p>
           <p className="mt-0.5 text-xs text-slate-400">
-            Dateien im Format <span className="font-mono">TT-MM-JJJJ.txt</span> im <span className="font-mono">inbox/</span>-Ordner
-            werden alle 5 Minuten automatisch importiert. Ein Windows-Skript kopiert sie vorher vom Netzlaufwerk.
+            Die App holt Dateien im Format <span className="font-mono">JJJJ-MM-TT.txt</span> oder <span className="font-mono">TT-MM-JJJJ.txt</span> alle 5 Minuten
+            selbst aus dem Quellordner und importiert sie. Die Originale bleiben unverändert.
           </p>
         </div>
 
@@ -123,37 +108,13 @@ function AutoImportSection() {
         </div>
       </div>
 
-      <div className="space-y-3 border-b border-slate-100 px-5 py-4">
-        <label className="block text-xs font-medium text-slate-600" htmlFor="auto-import-path">
-          Netzlaufwerk-Pfad (Quelle)
-        </label>
-        <input
-          id="auto-import-path"
-          type="text"
-          value={networkPath}
-          onChange={(e) => setNetworkPath(e.target.value)}
-          placeholder="\\server\freigabe\EinlassDateien"
-          disabled={isLoading}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-        <p className="text-xs text-slate-400">
-          Das Skript <span className="font-mono">sync-inbox-from-network.ps1</span> liest diesen Wert bei jedem Lauf und meldet
-          sich nach jedem Lauf zurück (siehe „Sync-Skript“ unten).
+      <div className="space-y-1 border-b border-slate-100 px-5 py-4 text-xs">
+        <p className="font-medium text-slate-600">Quellordner im Container</p>
+        <p className="font-mono text-slate-800">{status?.sourceDir ?? '…'}</p>
+        <p className="text-slate-400">
+          Wird beim Start des Containers eingebunden (siehe Installationsanleitung). Hier lässt sich nur der Schalter ändern.
+          {status?.fromDate && <> Es werden nur Dateien ab {status.fromDate} übernommen.</>}
         </p>
-        <div className="flex items-center justify-between">
-          {!isLoading && !data?.networkPath && (
-            <p className="text-xs text-amber-600">Noch nicht konfiguriert - das Sync-Skript nutzt derzeit seinen Beispiel-Default.</p>
-          )}
-          <Button
-            onClick={() => saveMutation.mutate()}
-            disabled={!networkPath.trim() || saveMutation.isPending}
-            loading={saveMutation.isPending}
-            size="sm"
-            className="ml-auto"
-          >
-            Speichern
-          </Button>
-        </div>
       </div>
 
       <div className="space-y-3 px-5 py-4">

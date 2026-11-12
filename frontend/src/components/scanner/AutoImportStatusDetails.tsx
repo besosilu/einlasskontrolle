@@ -102,16 +102,16 @@ export function AutoImportStatusDetails({ status }: { status: AutoImportStatus }
         <Row label="Nächste Prüfung">
           {status.enabled && nextCheckAt ? formatRelative(nextCheckAt, now) : '–'}
         </Row>
-        <Row label="Sync-Skript">
+        <Row label="Netzlaufwerk">
           {sync ? (
             <>
               <span className={sync.ok ? '' : 'text-red-600'}>{formatRelative(sync.lastRunAt, now)}</span>
               <span className={cn('block', sync.ok ? 'text-slate-400' : 'text-red-500')}>
-                {sync.ok ? 'zuletzt erfolgreich' : sync.message ?? 'fehlgeschlagen'}
+                {sync.message ?? (sync.ok ? 'erreichbar, nichts Neues' : 'fehlgeschlagen')}
               </span>
             </>
           ) : (
-            <span className="text-amber-600">hat sich noch nie gemeldet</span>
+            <span className="text-slate-400">noch nicht geprüft</span>
           )}
         </Row>
         <Row label="Im Eingang">

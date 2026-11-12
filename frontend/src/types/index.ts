@@ -178,7 +178,6 @@ export interface BackupFile {
 }
 
 export interface AutoImportSettings {
-  networkPath: string | null;
   enabled: boolean;
 }
 
@@ -192,7 +191,8 @@ export interface AutoImportInboxFile {
 export interface AutoImportStatus {
   enabled: boolean;
   state: 'disabled' | 'processing' | 'active';
-  networkPath: string | null;
+  sourceDir: string;
+  fromDate: string | null;
   intervalSeconds: number;
   nextCheckAt: string | null;
   lastCheck: {

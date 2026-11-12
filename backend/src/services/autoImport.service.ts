@@ -2,12 +2,17 @@ import fs from 'fs';
 import path from 'path';
 import sql from '../lib/db.js';
 import { importMembersFromCsv, logImportFailure } from './import.service.js';
-import { getAutoImportEnabled, getAutoImportNetworkPath } from './settings.service.js';
+import { getAutoImportEnabled } from './settings.service.js';
 
 const INBOX_DIR = process.env['AUTO_IMPORT_INBOX_DIR'] ?? '/app/inbox';
 const VERARBEITET_DIR = path.join(INBOX_DIR, 'verarbeitet');
 const FEHLER_DIR = path.join(INBOX_DIR, 'fehler');
-const SYNC_STATUS_FILE = path.join(INBOX_DIR, '.sync-status.json');
+// Quellordner (im Container das eingebundene Netzlaufwerk); die App holt von dort selbst, ohne Windows-Aufgabe
+const SOURCE_DIR = process.env['AUTO_IMPORT_SOURCE_DIR'] ?? '/app/netzlaufwerk';
+// Optional (yyyy-MM-dd): Dateien mit älterem Datum im Namen werden nicht übernommen
+const FROM_DATE = /^\d{4}-\d{2}-\d{2}$/.test(process.env['AUTO_IMPORT_FROM_DATE'] ?? '')
+  ? (process.env['AUTO_IMPORT_FROM_DATE'] as string)
+  : null;
 fs.mkdirSync(INBOX_DIR, { recursive: true });
 fs.mkdirSync(VERARBEITET_DIR, { recursive: true });
 fs.mkdirSync(FEHLER_DIR, { recursive: true });
@@ -15,20 +20,21 @@ fs.mkdirSync(FEHLER_DIR, { recursive: true });
 const STABLE_THRESHOLD_MS = 60_000;
 const MAX_FILES_PER_TICK = 20;
 const TICK_INTERVAL_MS = 5 * 60_000;
-// Das Sync-Skript läuft alle 5-15 Minuten; ab dieser Pause gilt es als nicht mehr aktiv
-const SYNC_STALE_AFTER_MS = 60 * 60_000;
 
-const INBOX_FILENAME_PATTERN = /^(\d{2})-(\d{2})-(\d{4})\.txt$/;
+// Erlaubt sind TT-MM-JJJJ.txt und JJJJ-MM-TT.txt
+const FILENAME_DMY = /^(\d{2})-(\d{2})-(\d{4})\.txt$/;
+const FILENAME_YMD = /^(\d{4})-(\d{2})-(\d{2})\.txt$/;
 
 type ParsedInboxFilename = { entryDate: string } | 'invalid-date' | null;
 
 // null = Dateiname passt nicht zum Muster (ignorieren, nie anfassen).
 // 'invalid-date' = Muster passt, aber Kalenderdatum ungültig (z.B. 31-02-2026) -> fehler/.
 export function parseInboxFilename(filename: string): ParsedInboxFilename {
-  const match = INBOX_FILENAME_PATTERN.exec(filename);
-  if (!match) return null;
+  const dmy = FILENAME_DMY.exec(filename);
+  const ymd = dmy ? null : FILENAME_YMD.exec(filename);
+  if (!dmy && !ymd) return null;
 
-  const [, dd, mm, yyyy] = match;
+  const [dd, mm, yyyy] = dmy ? [dmy[1], dmy[2], dmy[3]] : [ymd![3], ymd![2], ymd![1]];
   const day = Number(dd);
   const month = Number(mm);
   const year = Number(yyyy);
@@ -108,6 +114,51 @@ let running = false;
 let progress: { currentFile: string | null; done: number; total: number } | null = null;
 let lastCheck: LastCheck | null = null;
 let nextCheckAt: number | null = null;
+let sourceState: { lastRunAt: number; ok: boolean; message: string | null } | null = null;
+
+function isKnown(filename: string): boolean {
+  if (fs.existsSync(path.join(INBOX_DIR, filename))) return true;
+  const base = filename.slice(0, -'.txt'.length);
+  return [VERARBEITET_DIR, FEHLER_DIR].some((dir) => {
+    if (fs.existsSync(path.join(dir, filename))) return true;
+    return fs.readdirSync(dir).some((n) => n.startsWith(`${base}_`) && n.endsWith('.txt'));
+  });
+}
+
+/** Holt neue Dateien aus dem Quellordner in den Eingang. Das Original bleibt unangetastet. */
+function syncFromSource(): number {
+  let names: string[];
+  try {
+    names = fs.readdirSync(SOURCE_DIR);
+  } catch (err) {
+    const reason = (err as NodeJS.ErrnoException).code === 'ENOENT' ? 'nicht vorhanden' : 'nicht lesbar';
+    sourceState = { lastRunAt: Date.now(), ok: false, message: `Quellordner ${SOURCE_DIR} ist ${reason} (Netzlaufwerk nicht eingebunden?)` };
+    return 0;
+  }
+
+  let copied = 0;
+  try {
+    for (const name of names.sort()) {
+      const parsed = parseInboxFilename(name);
+      if (parsed === null) continue;
+      if (parsed !== 'invalid-date' && FROM_DATE && parsed.entryDate < FROM_DATE) continue; // ungültige Namen landen zur Anzeige in fehler/
+      if (isKnown(name)) continue;
+
+      const src = path.join(SOURCE_DIR, name);
+      const stat = fs.statSync(src);
+      if (!stat.isFile() || Date.now() - stat.mtimeMs < STABLE_THRESHOLD_MS) continue; // noch in Arbeit
+
+      const tmp = path.join(INBOX_DIR, `.tmp-${name}`);
+      fs.copyFileSync(src, tmp);
+      fs.renameSync(tmp, path.join(INBOX_DIR, name));
+      copied++;
+    }
+    sourceState = { lastRunAt: Date.now(), ok: true, message: copied > 0 ? `${copied} neue Datei${copied === 1 ? '' : 'en'} übernommen` : null };
+  } catch (err) {
+    sourceState = { lastRunAt: Date.now(), ok: false, message: err instanceof Error ? err.message : 'Kopieren fehlgeschlagen' };
+  }
+  return copied;
+}
 
 export async function processInboxOnce(): Promise<{ processed: number; failed: number }> {
   const candidates = scanInbox();
@@ -167,6 +218,7 @@ async function runCheck(trigger: LastCheck['trigger']): Promise<'ran' | 'disable
       return 'disabled';
     }
     try {
+      syncFromSource();
       const { processed, failed } = await processInboxOnce();
       lastCheck = { finishedAt: Date.now(), trigger, processed, failed, skippedBecauseDisabled: false, error: null };
     } catch (err) {
@@ -216,7 +268,7 @@ export interface InboxFileInfo {
 function listInboxFiles(): InboxFileInfo[] {
   const files: InboxFileInfo[] = [];
   for (const entry of fs.readdirSync(INBOX_DIR, { withFileTypes: true })) {
-    // Punktdateien (.sync-config.json, .sync-status.json) und Nicht-Textdateien sind nie Einlassdateien
+    // Punktdateien und Nicht-Textdateien sind nie Einlassdateien
     if (!entry.isFile() || entry.name.startsWith('.') || !entry.name.toLowerCase().endsWith('.txt')) continue;
 
     const parsed = parseInboxFilename(entry.name);
@@ -225,7 +277,7 @@ function listInboxFiles(): InboxFileInfo[] {
         filename: entry.name,
         state: 'ignored',
         secondsUntilReady: null,
-        note: 'Name passt nicht zu TT-MM-JJJJ.txt, wird nicht importiert',
+        note: 'Name passt nicht zu JJJJ-MM-TT.txt oder TT-MM-JJJJ.txt, wird nicht importiert',
       });
       continue;
     }
@@ -249,48 +301,23 @@ function countFiles(dir: string): number {
   }
 }
 
-interface SyncStatus {
-  lastRunAt: string;
-  ok: boolean;
-  message: string | null;
-}
-
-// Das Windows-Sync-Skript schreibt nach jedem Lauf .sync-status.json in den Eingangsordner
-function readSyncStatus(): SyncStatus | null {
-  try {
-    const raw = JSON.parse(fs.readFileSync(SYNC_STATUS_FILE, 'utf-8').replace(/^﻿/, ''));
-    const when = new Date(raw.lastRun);
-    if (isNaN(when.getTime())) return null;
-    return { lastRunAt: when.toISOString(), ok: raw.ok === true, message: typeof raw.message === 'string' ? raw.message : null };
-  } catch {
-    return null;
-  }
-}
-
 export async function getAutoImportStatus() {
-  const [enabled, networkPath] = await Promise.all([getAutoImportEnabled(), getAutoImportNetworkPath()]);
+  const enabled = await getAutoImportEnabled();
   const [lastImport] = await sql<{ id: number; filename: string; imported_at: Date; errors: unknown }[]>`
     SELECT id, filename, imported_at, errors FROM import_logs WHERE source = 'auto' ORDER BY id DESC LIMIT 1
   `;
 
   const files = listInboxFiles();
-  const sync = readSyncStatus();
+  const sync = sourceState ? { lastRunAt: new Date(sourceState.lastRunAt).toISOString(), ok: sourceState.ok, message: sourceState.message } : null;
   const archive = { processed: countFiles(VERARBEITET_DIR), failed: countFiles(FEHLER_DIR) };
 
   const warnings: string[] = [];
   if (enabled) {
-    if (!sync) {
-      warnings.push('Das Sync-Skript hat sich noch nie gemeldet. Ist die Windows-Aufgabe „EinlassInboxSync“ eingerichtet?');
-    } else if (!sync.ok) {
-      warnings.push(`Der letzte Lauf des Sync-Skripts ist fehlgeschlagen${sync.message ? `: ${sync.message}` : ''}.`);
-    } else if (Date.now() - new Date(sync.lastRunAt).getTime() > SYNC_STALE_AFTER_MS) {
-      warnings.push('Das Sync-Skript hat sich seit über einer Stunde nicht mehr gemeldet.');
-    }
-    if (!networkPath) warnings.push('Es ist noch kein Netzlaufwerk-Pfad hinterlegt.');
+    if (sync && !sync.ok) warnings.push(`Netzlaufwerk: ${sync.message ?? 'Quelle nicht erreichbar'}`);
   }
   const ignored = files.filter((f) => f.state === 'ignored').length;
   if (ignored > 0) {
-    warnings.push(`${ignored} Datei${ignored === 1 ? '' : 'en'} im Eingang ${ignored === 1 ? 'wird' : 'werden'} ignoriert, weil der Name nicht zu TT-MM-JJJJ.txt passt.`);
+    warnings.push(`${ignored} Datei${ignored === 1 ? '' : 'en'} im Eingang ${ignored === 1 ? 'wird' : 'werden'} ignoriert, weil der Name nicht zu JJJJ-MM-TT.txt oder TT-MM-JJJJ.txt passt.`);
   }
   if (archive.failed > 0) {
     warnings.push(
@@ -304,7 +331,8 @@ export async function getAutoImportStatus() {
   return {
     enabled,
     state: !enabled ? 'disabled' : progress ? 'processing' : 'active',
-    networkPath,
+    sourceDir: SOURCE_DIR,
+    fromDate: FROM_DATE,
     intervalSeconds: TICK_INTERVAL_MS / 1000,
     nextCheckAt: enabled && nextCheckAt ? new Date(nextCheckAt).toISOString() : null,
     lastCheck: lastCheck

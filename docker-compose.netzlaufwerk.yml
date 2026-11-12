@@ -1,0 +1,19 @@
+# Optionaler Zusatz: bindet eine Windows-Freigabe (SMB/CIFS) direkt in den Container ein, damit der
+# automatische Einlass-Import Dateien von dort holt - ohne Windows-Aufgabe, ohne Skript.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.netzlaufwerk.yml up -d
+#
+# Benoetigt in der .env: NETZLAUFWERK_SHARE (z.B. //server/freigabe/Einlass), NETZLAUFWERK_USER,
+# NETZLAUFWERK_PASSWORD, optional NETZLAUFWERK_DOMAIN. Der Zugriff ist schreibgeschuetzt.
+services:
+  app:
+    volumes:
+      - netzlaufwerk:/app/netzlaufwerk:ro
+
+volumes:
+  netzlaufwerk:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: ${NETZLAUFWERK_SHARE}
+      o: "username=${NETZLAUFWERK_USER},password=${NETZLAUFWERK_PASSWORD},domain=${NETZLAUFWERK_DOMAIN:-WORKGROUP},ro,vers=3.0,file_mode=0444,dir_mode=0555"
