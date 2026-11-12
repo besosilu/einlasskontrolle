@@ -137,11 +137,13 @@ function syncFromSource(): number {
   }
 
   let copied = 0;
+  const maxDate = new Date(Date.now() + 86_400_000).toLocaleDateString('sv-SE');
   try {
     for (const name of names.sort()) {
       const parsed = parseInboxFilename(name);
       if (parsed === null) continue;
       if (parsed !== 'invalid-date' && FROM_DATE && parsed.entryDate < FROM_DATE) continue; // ungültige Namen landen zur Anzeige in fehler/
+      if (parsed !== 'invalid-date' && parsed.entryDate > maxDate) continue; // Tippfehler im Jahr (z.B. 3036) nicht übernehmen
       if (isKnown(name)) continue;
 
       const src = path.join(SOURCE_DIR, name);
