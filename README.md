@@ -156,6 +156,8 @@ Die App erzeugt Besucherzahlen-Berichte als **Excel-Datei** (`.xlsx`) - **keine 
 - **Monat** (automatisch zum Monatswechsel erzeugt): Sheet "Übersicht" mit einer Zeile pro Tag des Monats (Datum, Eintritte gesamt, lückenlos auch an Tagen ohne Eintritte). Danach ein eigenes Sheet **pro Tag mit mindestens einem Eintritt** (Sheet-Name = Datum), mit den Mitgliedern dieses Tages: Spalte 1 Mitgliedsnummer, Spalte 2 Name, Spalte 3 Vorname.
 - **Jahr** (nur auf Knopfdruck, keine Automatik): Sheet "Übersicht" mit einer Zeile pro Monat (Monat, Eintritte gesamt). Danach ein Sheet **pro Monat mit mindestens einem Eintritt** (statt pro Tag, sonst zu viele Sheets) mit allen Besuchen dieses Monats in den gleichen drei Spalten - ein Mitglied, das mehrfach im Monat da war, erscheint entsprechend mehrfach.
 
+**Format wählen:** Im Finanzamt-Tab (Protokoll) steht neben Monat/Jahr die Auswahl **Excel** oder **CSV**. Bei CSV entsteht statt der Datei ein Ordner `Finanzamt_Monat_<yyyy-MM>/` bzw. `Finanzamt_Jahr_<yyyy>/` mit **einer CSV-Datei pro Excel-Sheet** (`Übersicht.csv`, `2026-10-03.csv`, …; gleiche Spalten wie in Excel; `;`-getrennt, UTF-8 mit BOM). Die Dateien lassen sich einzeln im Tab herunterladen. Der automatische Monatsbericht zum Monatswechsel bleibt Excel. API: `POST /reports/generate?scope=…&period=…&format=xlsx|csv`, Download einer CSV-Datei über `GET /reports/<ordner>/download?file=<datei>.csv`.
+
 Beide Berichtsarten landen im Ordner `reports/` neben der `docker-compose.yml` (lokales Bind-Mount, `REPORTS_DIR` im Container).
 
 Soll der Bericht automatisch auf ein Netzlaufwerk (UNC-Pfad) kopiert werden, ist das in zwei Schritte aufgeteilt, weil Docker Desktop einen UNC-Pfad nicht zuverlässig direkt einbinden kann:

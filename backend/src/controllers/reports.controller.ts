@@ -15,6 +15,7 @@ export function list(_req: Request, res: Response, next: NextFunction) {
 export async function generate(req: Request, res: Response, next: NextFunction) {
   try {
     const scope = req.query['scope'] === 'year' ? 'year' : 'month';
+    const format = req.query['format'] === 'csv' ? 'csv' : 'xlsx';
     const period = typeof req.query['period'] === 'string' ? req.query['period'] : undefined;
 
     if (scope === 'year') {
@@ -22,7 +23,7 @@ export async function generate(req: Request, res: Response, next: NextFunction) 
       if (!YEAR_PATTERN.test(year)) {
         return res.status(400).json({ error: 'Ungültiges Jahr (erwartet yyyy)' });
       }
-      const { filename } = await reportsService.generateYearlyAttendanceReport(year);
+      const { filename } = await reportsService.generateYearlyAttendanceReport(year, format);
       return res.status(201).json({ filename });
     }
 
@@ -30,7 +31,7 @@ export async function generate(req: Request, res: Response, next: NextFunction) 
     if (!MONTH_PATTERN.test(month)) {
       return res.status(400).json({ error: 'Ungültiger Monat (erwartet yyyy-MM)' });
     }
-    const { filename } = await reportsService.generateMonthlyAttendanceReport(month);
+    const { filename } = await reportsService.generateMonthlyAttendanceReport(month, format);
     res.status(201).json({ filename });
   } catch (err) {
     next(err);
@@ -39,7 +40,10 @@ export async function generate(req: Request, res: Response, next: NextFunction) 
 
 export function download(req: Request, res: Response, next: NextFunction) {
   try {
-    const filePath = reportsService.getReportPath(String(req.params['filename'] ?? ''));
+    const filePath = reportsService.getReportPath(
+      String(req.params['filename'] ?? ''),
+      typeof req.query['file'] === 'string' ? req.query['file'] : undefined
+    );
     if (!filePath) {
       return res.status(404).json({ error: 'Bericht nicht gefunden' });
     }

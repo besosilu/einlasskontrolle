@@ -210,7 +210,7 @@ export async function getExistingEntryForDate(memberId: number, dateOverride?: s
 
 export type MemberExportKind = 'new-card' | 'trial' | 'pre-swim';
 
-function csvField(value: string | null): string {
+export function csvField(value: string | null): string {
   const v = value ?? '';
   return /[;"\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }

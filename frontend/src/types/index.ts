@@ -167,6 +167,8 @@ export interface MonthlyReport {
   filename: string;
   period: string;
   scope: 'month' | 'year';
+  format: 'xlsx' | 'csv';
+  files: string[];
   sizeBytes: number;
   createdAt: string;
 }

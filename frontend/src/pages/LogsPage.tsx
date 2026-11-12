@@ -87,6 +87,8 @@ function FinanzamtTab() {
   const queryClient = useQueryClient();
   const [scope, setScope] = useState<'month' | 'year'>('month');
   const [period, setPeriod] = useState('');
+  const [format, setFormat] = useState<'xlsx' | 'csv'>('xlsx');
+  const [openFolder, setOpenFolder] = useState<string | null>(null);
 
   const { data: reports = [], isLoading } = useQuery({
     queryKey: ['monthly-reports'],
@@ -94,17 +96,17 @@ function FinanzamtTab() {
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => reportsApi.generate(scope, period || undefined),
+    mutationFn: () => reportsApi.generate(scope, format, period || undefined),
     onSuccess: () => {
-      showToast('success', 'Bericht erzeugt (Excel).');
+      showToast('success', format === 'csv' ? 'Bericht erzeugt (CSV-Ordner).' : 'Bericht erzeugt (Excel).');
       queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
     },
     onError: () => showToast('error', 'Bericht konnte nicht erzeugt werden.'),
   });
 
-  async function download(filename: string) {
+  async function download(filename: string, file?: string) {
     try {
-      const { blob, filename: name } = await reportsApi.download(filename);
+      const { blob, filename: name } = await reportsApi.download(filename, file);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -120,10 +122,10 @@ function FinanzamtTab() {
     <div className="rounded-xl border border-slate-200 bg-white">
       <div className="border-b border-slate-100 px-5 py-4 space-y-3">
         <div>
-          <p className="text-sm font-semibold text-slate-700">Besucherzahlen-Berichte (Excel)</p>
+          <p className="text-sm font-semibold text-slate-700">Besucherzahlen-Berichte</p>
           <p className="text-xs text-slate-400 mt-0.5">
             Monatsberichte werden automatisch zum Monatswechsel erzeugt. Jahresberichte entstehen nur auf
-            Knopfdruck. Beide liegen im Ordner <span className="font-mono">reports/</span>.
+            Knopfdruck. Excel ergibt eine Datei, CSV einen Ordner mit einer Datei pro Tabellenblatt; alles liegt in <span className="font-mono">reports/</span>. Der automatische Monatsbericht ist immer Excel.
           </p>
         </div>
 
@@ -147,6 +149,21 @@ function FinanzamtTab() {
             >
               Jahr
             </button>
+          </div>
+
+          <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+            {(['xlsx', 'csv'] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFormat(f)}
+                className={cn(
+                  'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                  format === f ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                {f === 'xlsx' ? 'Excel' : 'CSV'}
+              </button>
+            ))}
           </div>
 
           {scope === 'month' ? (
@@ -187,23 +204,53 @@ function FinanzamtTab() {
       ) : (
         <div className="divide-y divide-slate-50">
           {reports.map((r) => (
-            <div key={r.filename} className="flex items-center gap-4 px-5 py-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-800">
-                  {r.period}
-                  <span className="ml-2 text-xs font-normal text-slate-400">
-                    {r.scope === 'year' ? 'Jahr' : 'Monat'}
-                  </span>
-                </p>
-                <p className="text-xs text-slate-400">{(r.sizeBytes / 1024).toFixed(1)} KB</p>
+            <div key={r.filename}>
+              <div className="flex items-center gap-4 px-5 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-800">
+                    {r.period}
+                    <span className="ml-2 text-xs font-normal text-slate-400">
+                      {r.scope === 'year' ? 'Jahr' : 'Monat'} · {r.format === 'csv' ? 'CSV' : 'Excel'}
+                    </span>
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {r.format === 'csv' ? `Ordner ${r.filename}/ · ${r.files.length} Dateien · ` : ''}
+                    {(r.sizeBytes / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+                {r.format === 'xlsx' ? (
+                  <button
+                    onClick={() => download(r.filename)}
+                    title="Herunterladen"
+                    className="flex items-center gap-1.5 rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setOpenFolder(openFolder === r.filename ? null : r.filename)}
+                    className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
+                  >
+                    {openFolder === r.filename ? 'Dateien ausblenden' : 'Dateien anzeigen'}
+                  </button>
+                )}
               </div>
-              <button
-                onClick={() => download(r.filename)}
-                title="Herunterladen"
-                className="flex items-center gap-1.5 rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-              >
-                <Download className="h-4 w-4" />
-              </button>
+              {r.format === 'csv' && openFolder === r.filename && (
+                <ul className="bg-slate-50 px-5 py-2">
+                  {r.files.map((f) => (
+                    <li key={f} className="flex items-center justify-between py-1 text-xs text-slate-600">
+                      <span className="font-mono">{f}</span>
+                      <button
+                        onClick={() => download(r.filename, f)}
+                        title="Herunterladen"
+                        className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ))}
         </div>
