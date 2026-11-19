@@ -51,7 +51,8 @@ export function CalendarView() {
   const selectedDayData = monthData.find((d) => d.date === selectedKey);
 
   return (
-    <div className="space-y-4">
+    <div className="grid items-start gap-4 lg:grid-cols-[21rem_1fr]">
+      <div className="space-y-3">
       {/* Month Navigation */}
       <div className="flex items-center justify-between">
         <button
@@ -77,7 +78,7 @@ export function CalendarView() {
         {/* Weekday headers */}
         <div className="grid grid-cols-7 border-b border-slate-100">
           {WEEKDAYS.map((d) => (
-            <div key={d} className="py-2 text-center text-xs font-medium text-slate-400">
+            <div key={d} className="py-1.5 text-center text-xs font-medium text-slate-400">
               {d}
             </div>
           ))}
@@ -87,7 +88,7 @@ export function CalendarView() {
         <div className="grid grid-cols-7">
           {/* Leading blank cells */}
           {Array.from({ length: leadingBlanks }).map((_, i) => (
-            <div key={`blank-${i}`} className="aspect-square border-b border-r border-slate-50" />
+            <div key={`blank-${i}`} className="h-11 border-b border-r border-slate-50" />
           ))}
 
           {days.map((day) => {
@@ -104,7 +105,7 @@ export function CalendarView() {
                 disabled={isFuture}
                 onClick={() => setSelectedDate(day)}
                 className={cn(
-                  'relative flex flex-col items-center justify-center aspect-square border-b border-r border-slate-50 text-sm transition-colors',
+                  'relative flex h-11 flex-col items-center justify-center border-b border-r border-slate-50 text-sm transition-colors',
                   isFuture
                     ? 'cursor-not-allowed text-slate-200'
                     : isSelected
@@ -116,19 +117,19 @@ export function CalendarView() {
               >
                 <span
                   className={cn(
-                    'flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium',
+                    'flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium',
                     isTodayDay && !isSelected && 'ring-2 ring-blue-400'
                   )}
                 >
                   {format(day, 'd')}
                 </span>
                 {hasEntries && !isSelected && (
-                  <span className="mt-0.5 text-[10px] font-semibold text-blue-500 leading-none">
+                  <span className="text-[10px] font-semibold text-blue-500 leading-none">
                     {count}
                   </span>
                 )}
                 {hasEntries && isSelected && (
-                  <span className="mt-0.5 text-[10px] font-semibold text-blue-100 leading-none">
+                  <span className="text-[10px] font-semibold text-blue-100 leading-none">
                     {count}
                   </span>
                 )}
@@ -139,7 +140,7 @@ export function CalendarView() {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-slate-500">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
         <span className="flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-full bg-blue-100 ring-1 ring-blue-200" />
           Einlässe vorhanden
@@ -152,6 +153,8 @@ export function CalendarView() {
           <span className="h-3 w-3 rounded-full bg-blue-600" />
           Ausgewählt
         </span>
+      </div>
+
       </div>
 
       {/* Selected Day Detail */}
@@ -184,9 +187,9 @@ export function CalendarView() {
               </div>
             </div>
 
-            <div className="divide-y divide-slate-50">
+            <div className="max-h-[calc(100vh-18rem)] divide-y divide-slate-50 overflow-y-auto">
               {selectedDayData.members.map((m) => (
-                <div key={m.entryId} className="flex items-center gap-3 px-5 py-3">
+                <div key={m.entryId} className="flex items-center gap-3 px-5 py-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-800 truncate">
                       {m.lastName}, {m.firstName}
