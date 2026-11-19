@@ -24,10 +24,12 @@ export async function getDashboard(day: string = toDayString(new Date())) {
     sql<[{ count: string }]>`
       SELECT COUNT(*) AS count FROM entries
       WHERE entry_date >= date_trunc('week', ${day}::date)::date
+        AND entry_date < (date_trunc('week', ${day}::date) + interval '1 week')::date
     `,
     sql<[{ count: string }]>`
       SELECT COUNT(*) AS count FROM entries
       WHERE entry_date >= date_trunc('month', ${day}::date)::date
+        AND entry_date < (date_trunc('month', ${day}::date) + interval '1 month')::date
     `,
     sql<[{ count: string }]>`
       SELECT COUNT(*) AS count FROM members WHERE is_trial = true
