@@ -14,13 +14,15 @@ const MEMBER_COLUMNS = [
   { header: 'Vorname', key: 'firstName', width: 22 },
 ];
 
-export type ReportFormat = 'xlsx' | 'csv';
+export type ReportFormat = 'xlsx' | 'csv' | 'md';
 
 // Ein Tabellenblatt: wird als Excel-Sheet oder als eine CSV-Datei geschrieben
 interface ReportSheet {
   name: string;
   columns: { header: string; key: string; width: number }[];
   rows: Record<string, string | number>[];
+  /** Nur CSV: Statistikzeile ganz oben vor der Kopfzeile (Excel hat dafür das Übersicht-Sheet) */
+  summary?: (string | number)[];
 }
 
 // CSV-Berichte liegen als Ordner (ohne Endung) im Berichtsordner, Excel-Berichte als .xlsx-Datei
@@ -56,6 +58,7 @@ function writeCsvFolder(sheets: ReportSheet[], base: string): { filename: string
   fs.mkdirSync(tmpPath);
   for (const s of sheets) {
     const lines = [
+      ...(s.summary ? [s.summary.map((v) => csvField(String(v))).join(';')] : []),
       s.columns.map((c) => csvField(c.header)).join(';'),
       ...s.rows.map((r) => s.columns.map((c) => csvField(String(r[c.key] ?? ''))).join(';')),
     ];
@@ -66,8 +69,44 @@ function writeCsvFolder(sheets: ReportSheet[], base: string): { filename: string
   return { filename: base, path: finalPath };
 }
 
+// Markdown: eine .md-Datei pro Sheet im Ordner <base>_md/; erste Zeile = Statistik, danach die Tabelle
+function mdCell(value: unknown): string {
+  return String(value ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+}
+
+function writeMarkdownFolder(sheets: ReportSheet[], base: string): { filename: string; path: string } {
+  const folder = `${base}_md`;
+  const finalPath = path.join(REPORTS_DIR, folder);
+  const tmpPath = path.join(REPORTS_DIR, `.tmp-${folder}`);
+  fs.rmSync(tmpPath, { recursive: true, force: true });
+  fs.mkdirSync(tmpPath);
+  for (const s of sheets) {
+    const lines: string[] = [];
+    if (s.summary) {
+      // "Statistik | 2026-11 | Eintritte gesamt | 7" -> **Statistik** · 2026-11 · Eintritte gesamt: 7
+      const [label, period, ...pairs] = s.summary;
+      const facts: string[] = [];
+      for (let i = 0; i + 1 < pairs.length; i += 2) facts.push(`${pairs[i]}: ${pairs[i + 1]}`);
+      lines.push(`**${label}** · ${period} · ${facts.join(' · ')}`, '');
+    }
+    lines.push(`| ${s.columns.map((c) => mdCell(c.header)).join(' | ')} |`);
+    lines.push(`| ${s.columns.map(() => '---').join(' | ')} |`);
+    for (const r of s.rows) lines.push(`| ${s.columns.map((c) => mdCell(r[c.key])).join(' | ')} |`);
+    fs.writeFileSync(path.join(tmpPath, `${s.name}.md`), lines.join('\n') + '\n', 'utf-8');
+  }
+  fs.rmSync(finalPath, { recursive: true, force: true });
+  fs.renameSync(tmpPath, finalPath);
+  return { filename: folder, path: finalPath };
+}
+
+function distinctVisitors(rows: { memberNumber: string | null; lastName: string; firstName: string }[]): number {
+  return new Set(rows.map((r) => r.memberNumber ?? `${r.lastName}|${r.firstName}`)).size;
+}
+
 async function writeReport(sheets: ReportSheet[], base: string, format: ReportFormat) {
-  return format === 'csv' ? writeCsvFolder(sheets, base) : writeXlsx(sheets, base);
+  if (format === 'csv') return writeCsvFolder(sheets, base);
+  if (format === 'md') return writeMarkdownFolder(sheets, base);
+  return writeXlsx(sheets, base);
 }
 
 export { getLastCompletedMonth };
@@ -88,6 +127,14 @@ export async function generateMonthlyAttendanceReport(
         { header: 'Eintritte gesamt', key: 'total', width: 18 },
       ],
       rows: days.map((day) => ({ date: day, total: byDate.get(day)?.total ?? 0 })),
+      summary: [
+        'Statistik',
+        yearMonth,
+        'Eintritte gesamt',
+        dayRows.reduce((sum, r) => sum + r.total, 0),
+        'Tage mit Eintritten',
+        dayRows.filter((r) => r.total > 0).length,
+      ],
     },
   ];
 
@@ -97,6 +144,7 @@ export async function generateMonthlyAttendanceReport(
     const members = await statsService.getMembersForDay(day);
     sheets.push({
       name: day,
+      summary: ['Statistik', day, 'Eintritte gesamt', members.length, 'Verschiedene Mitglieder', distinctVisitors(members)],
       columns: MEMBER_COLUMNS,
       rows: members.map((m) => ({ memberNumber: m.memberNumber ?? '', lastName: m.lastName, firstName: m.firstName })),
     });
@@ -121,6 +169,14 @@ export async function generateYearlyAttendanceReport(
         { header: 'Eintritte gesamt', key: 'total', width: 18 },
       ],
       rows: months.map((month) => ({ month, total: byMonth.get(month) ?? 0 })),
+      summary: [
+        'Statistik',
+        year,
+        'Eintritte gesamt',
+        [...byMonth.values()].reduce((sum, n) => sum + n, 0),
+        'Monate mit Eintritten',
+        [...byMonth.values()].filter((n) => n > 0).length,
+      ],
     },
   ];
 
@@ -132,6 +188,7 @@ export async function generateYearlyAttendanceReport(
     const entries = await statsService.getEntriesForMonth(mFrom, mTo);
     sheets.push({
       name: month,
+      summary: ['Statistik', month, 'Eintritte gesamt', entries.length, 'Verschiedene Mitglieder', distinctVisitors(entries)],
       columns: MEMBER_COLUMNS,
       rows: entries.map((e) => ({ memberNumber: e.memberNumber ?? '', lastName: e.lastName, firstName: e.firstName })),
     });
@@ -148,22 +205,22 @@ export async function ensureMonthlyReportsUpToDate(): Promise<void> {
   }
 }
 
-const MONTHLY_FILE_PATTERN = /^Finanzamt_Monat_(\d{4}-\d{2})(\.xlsx)?$/;
-const YEARLY_FILE_PATTERN = /^Finanzamt_Jahr_(\d{4})(\.xlsx)?$/;
+const MONTHLY_FILE_PATTERN = /^Finanzamt_Monat_(\d{4}-\d{2})(\.xlsx|_md)?$/;
+const YEARLY_FILE_PATTERN = /^Finanzamt_Jahr_(\d{4})(\.xlsx|_md)?$/;
 
 export interface ReportFile {
   filename: string;
   period: string;
   scope: 'month' | 'year';
   format: ReportFormat;
-  /** Nur bei CSV-Ordnern: die enthaltenen Dateien */
+  /** Nur bei CSV-/Markdown-Ordnern: die enthaltenen Dateien */
   files: string[];
   sizeBytes: number;
   createdAt: string;
 }
 
-function listCsvFiles(folder: string): string[] {
-  return fs.readdirSync(path.join(REPORTS_DIR, folder)).filter((f) => f.endsWith('.csv')).sort();
+function listFolderFiles(folder: string, ext: '.csv' | '.md'): string[] {
+  return fs.readdirSync(path.join(REPORTS_DIR, folder)).filter((f) => f.endsWith(ext)).sort();
 }
 
 export function listReports(): ReportFile[] {
@@ -174,15 +231,16 @@ export function listReports(): ReportFile[] {
       if (!match) return [];
       const scope = entry.name.startsWith('Finanzamt_Monat_') ? 'month' : 'year';
       const full = path.join(REPORTS_DIR, entry.name);
-      // Excel = Datei mit .xlsx, CSV = Ordner ohne Endung
-      if (entry.isFile() && match[2]) {
+      // Excel = Datei mit .xlsx, CSV = Ordner ohne Endung, Markdown = Ordner mit Endung _md
+      if (entry.isFile() && match[2] === '.xlsx') {
         const stat = fs.statSync(full);
         return [{ filename: entry.name, period: match[1], scope, format: 'xlsx', files: [], sizeBytes: stat.size, createdAt: stat.mtime.toISOString() }];
       }
-      if (entry.isDirectory() && !match[2]) {
-        const files = listCsvFiles(entry.name);
+      if (entry.isDirectory() && match[2] !== '.xlsx') {
+        const format = match[2] === '_md' ? 'md' : 'csv';
+        const files = listFolderFiles(entry.name, format === 'md' ? '.md' : '.csv');
         const sizeBytes = files.reduce((sum, f) => sum + fs.statSync(path.join(full, f)).size, 0);
-        return [{ filename: entry.name, period: match[1], scope, format: 'csv', files, sizeBytes, createdAt: fs.statSync(full).mtime.toISOString() }];
+        return [{ filename: entry.name, period: match[1], scope, format, files, sizeBytes, createdAt: fs.statSync(full).mtime.toISOString() }];
       }
       return [];
     })

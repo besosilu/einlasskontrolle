@@ -4,7 +4,7 @@ import type { MonthlyReport } from '../types';
 export const reportsApi = {
   list: () => client.get<MonthlyReport[]>('/reports').then((r) => r.data),
 
-  generate: (scope: 'month' | 'year', format: 'xlsx' | 'csv', period?: string) =>
+  generate: (scope: 'month' | 'year', format: 'xlsx' | 'csv' | 'md', period?: string) =>
     client.post<{ filename: string }>('/reports/generate', undefined, { params: { scope, period, format } }).then((r) => r.data),
 
   download: (filename: string, file?: string) =>

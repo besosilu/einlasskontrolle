@@ -149,6 +149,10 @@ docker restart einlasskontrolle
 
 Der Ordner `backups/` ist in `.gitignore`, weil er personenbezogene Daten enthält. Er wird inzwischen doppelt genutzt: als Ablage für eigene, manuell erzeugte `pg_dump`-Dateien wie oben **und** als `BACKUP_DIR` der App für die strukturierten JSON-Sicherungen (siehe nächster Abschnitt) - beides kann nebeneinander im selben Ordner liegen.
 
+## Dunkler Modus
+
+In der Kopfzeile schaltet der Mond-/Sonne-Knopf zwischen hellem und dunklem Modus um. Die Wahl wird im Browser gespeichert; Standard ist hell.
+
 ## Finanzamt-Berichte
 
 Die App erzeugt Besucherzahlen-Berichte als **Excel-Datei** (`.xlsx`) - **keine Namen auf der Übersicht, kein Geld**, die App erfasst keine Zahlungen:
@@ -156,7 +160,7 @@ Die App erzeugt Besucherzahlen-Berichte als **Excel-Datei** (`.xlsx`) - **keine 
 - **Monat** (automatisch zum Monatswechsel erzeugt): Sheet "Übersicht" mit einer Zeile pro Tag des Monats (Datum, Eintritte gesamt, lückenlos auch an Tagen ohne Eintritte). Danach ein eigenes Sheet **pro Tag mit mindestens einem Eintritt** (Sheet-Name = Datum), mit den Mitgliedern dieses Tages: Spalte 1 Mitgliedsnummer, Spalte 2 Name, Spalte 3 Vorname.
 - **Jahr** (nur auf Knopfdruck, keine Automatik): Sheet "Übersicht" mit einer Zeile pro Monat (Monat, Eintritte gesamt). Danach ein Sheet **pro Monat mit mindestens einem Eintritt** (statt pro Tag, sonst zu viele Sheets) mit allen Besuchen dieses Monats in den gleichen drei Spalten - ein Mitglied, das mehrfach im Monat da war, erscheint entsprechend mehrfach.
 
-**Format wählen:** Im Finanzamt-Tab (Protokoll) steht neben Monat/Jahr die Auswahl **Excel** oder **CSV**. Bei CSV entsteht statt der Datei ein Ordner `Finanzamt_Monat_<yyyy-MM>/` bzw. `Finanzamt_Jahr_<yyyy>/` mit **einer CSV-Datei pro Excel-Sheet** (`Übersicht.csv`, `2026-10-03.csv`, …; gleiche Spalten wie in Excel; `;`-getrennt, UTF-8 mit BOM). Die Dateien lassen sich einzeln im Tab herunterladen. Der automatische Monatsbericht zum Monatswechsel bleibt Excel. API: `POST /reports/generate?scope=…&period=…&format=xlsx|csv`, Download einer CSV-Datei über `GET /reports/<ordner>/download?file=<datei>.csv`.
+**Format wählen:** Im Finanzamt-Tab (Protokoll) steht neben Monat/Jahr die Auswahl **Excel**, **CSV** oder **Markdown**. Markdown erzeugt den Ordner `Finanzamt_Monat_<yyyy-MM>_md/` (bzw. `Finanzamt_Jahr_<yyyy>_md/`) mit einer `.md`-Datei pro Sheet (Tabelle im Markdown-Format). CSV und Markdown beginnen jeweils mit einer **Statistikzeile** (z. B. `Statistik;2026-11-10;Eintritte gesamt;3;Verschiedene Mitglieder;3`), Excel hat dafür das Sheet „Übersicht“. Zu CSV: Bei CSV entsteht statt der Datei ein Ordner `Finanzamt_Monat_<yyyy-MM>/` bzw. `Finanzamt_Jahr_<yyyy>/` mit **einer CSV-Datei pro Excel-Sheet** (`Übersicht.csv`, `2026-10-03.csv`, …; gleiche Spalten wie in Excel; `;`-getrennt, UTF-8 mit BOM). Die Dateien lassen sich einzeln im Tab herunterladen. Der automatische Monatsbericht zum Monatswechsel bleibt Excel. API: `POST /reports/generate?scope=…&period=…&format=xlsx|csv|md`, Download einer CSV-Datei über `GET /reports/<ordner>/download?file=<datei>.csv`.
 
 Beide Berichtsarten landen im Ordner `reports/` neben der `docker-compose.yml` (lokales Bind-Mount, `REPORTS_DIR` im Container).
 

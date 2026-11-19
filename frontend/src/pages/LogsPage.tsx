@@ -87,7 +87,7 @@ function FinanzamtTab() {
   const queryClient = useQueryClient();
   const [scope, setScope] = useState<'month' | 'year'>('month');
   const [period, setPeriod] = useState('');
-  const [format, setFormat] = useState<'xlsx' | 'csv'>('xlsx');
+  const [format, setFormat] = useState<'xlsx' | 'csv' | 'md'>('xlsx');
   const [openFolder, setOpenFolder] = useState<string | null>(null);
 
   const { data: reports = [], isLoading } = useQuery({
@@ -98,7 +98,7 @@ function FinanzamtTab() {
   const generateMutation = useMutation({
     mutationFn: () => reportsApi.generate(scope, format, period || undefined),
     onSuccess: () => {
-      showToast('success', format === 'csv' ? 'Bericht erzeugt (CSV-Ordner).' : 'Bericht erzeugt (Excel).');
+      showToast('success', format === 'xlsx' ? 'Bericht erzeugt (Excel).' : 'Bericht erzeugt (Ordner mit Dateien).');
       queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
     },
     onError: () => showToast('error', 'Bericht konnte nicht erzeugt werden.'),
@@ -125,7 +125,7 @@ function FinanzamtTab() {
           <p className="text-sm font-semibold text-slate-700">Besucherzahlen-Berichte</p>
           <p className="text-xs text-slate-400 mt-0.5">
             Monatsberichte werden automatisch zum Monatswechsel erzeugt. Jahresberichte entstehen nur auf
-            Knopfdruck. Excel ergibt eine Datei, CSV einen Ordner mit einer Datei pro Tabellenblatt; alles liegt in <span className="font-mono">reports/</span>. Der automatische Monatsbericht ist immer Excel.
+            Knopfdruck. Excel ergibt eine Datei, CSV und Markdown je einen Ordner mit einer Datei pro Tabellenblatt (beide beginnen mit einer Statistikzeile); alles liegt in <span className="font-mono">reports/</span>. Der automatische Monatsbericht ist immer Excel.
           </p>
         </div>
 
@@ -152,7 +152,7 @@ function FinanzamtTab() {
           </div>
 
           <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
-            {(['xlsx', 'csv'] as const).map((f) => (
+            {(['xlsx', 'csv', 'md'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFormat(f)}
@@ -161,7 +161,7 @@ function FinanzamtTab() {
                   format === f ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 )}
               >
-                {f === 'xlsx' ? 'Excel' : 'CSV'}
+                {f === 'xlsx' ? 'Excel' : f === 'csv' ? 'CSV' : 'Markdown'}
               </button>
             ))}
           </div>
@@ -210,11 +210,11 @@ function FinanzamtTab() {
                   <p className="text-sm font-medium text-slate-800">
                     {r.period}
                     <span className="ml-2 text-xs font-normal text-slate-400">
-                      {r.scope === 'year' ? 'Jahr' : 'Monat'} · {r.format === 'csv' ? 'CSV' : 'Excel'}
+                      {r.scope === 'year' ? 'Jahr' : 'Monat'} · {r.format === 'csv' ? 'CSV' : r.format === 'md' ? 'Markdown' : 'Excel'}
                     </span>
                   </p>
                   <p className="text-xs text-slate-400">
-                    {r.format === 'csv' ? `Ordner ${r.filename}/ · ${r.files.length} Dateien · ` : ''}
+                    {r.format !== 'xlsx' ? `Ordner ${r.filename}/ · ${r.files.length} Dateien · ` : ''}
                     {(r.sizeBytes / 1024).toFixed(1)} KB
                   </p>
                 </div>
@@ -235,7 +235,7 @@ function FinanzamtTab() {
                   </button>
                 )}
               </div>
-              {r.format === 'csv' && openFolder === r.filename && (
+              {r.format !== 'xlsx' && openFolder === r.filename && (
                 <ul className="bg-slate-50 px-5 py-2">
                   {r.files.map((f) => (
                     <li key={f} className="flex items-center justify-between py-1 text-xs text-slate-600">

@@ -1,10 +1,16 @@
 import type { Config } from 'tailwindcss';
 
+// Die slate-Skala läuft über CSS-Variablen (src/index.css), damit der Dark-Modus sie umkehren kann.
+const slateScale = Object.fromEntries(
+  [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((n) => [n, `rgb(var(--slate-${n}) / <alpha-value>)`])
+);
+
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
+        slate: slateScale,
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',

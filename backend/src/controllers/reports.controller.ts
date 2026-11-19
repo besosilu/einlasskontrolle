@@ -15,7 +15,7 @@ export function list(_req: Request, res: Response, next: NextFunction) {
 export async function generate(req: Request, res: Response, next: NextFunction) {
   try {
     const scope = req.query['scope'] === 'year' ? 'year' : 'month';
-    const format = req.query['format'] === 'csv' ? 'csv' : 'xlsx';
+    const format = req.query['format'] === 'csv' ? 'csv' : req.query['format'] === 'md' ? 'md' : 'xlsx';
     const period = typeof req.query['period'] === 'string' ? req.query['period'] : undefined;
 
     if (scope === 'year') {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, LogOut, KeyRound } from 'lucide-react';
+import { Users, LogOut, KeyRound, Moon, Sun } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { entriesApi } from '@/api/entries';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { ServerClock } from './ServerClock';
 import { Input } from '@/components/ui/Input';
 import { showToast } from '@/components/ui/Toast';
+import { useTheme } from '@/hooks/useTheme';
 
 export function Header() {
   const { data } = useQuery({
@@ -20,6 +21,7 @@ export function Header() {
 
   const { logout, firstName, lastName, email } = useAuth();
   const navigate = useNavigate();
+  const { theme, toggle: toggleTheme } = useTheme();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -63,6 +65,18 @@ export function Header() {
           </div>
 
           <span className="text-sm text-slate-500 hidden sm:block">{displayName}</span>
+
+          <button
+            onClick={(e) => {
+              toggleTheme();
+              e.currentTarget.blur();
+            }}
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            title={theme === 'dark' ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln'}
+            aria-label={theme === 'dark' ? 'Hellen Modus einschalten' : 'Dunklen Modus einschalten'}
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
 
           <button
             onClick={() => setShowPasswordForm(true)}

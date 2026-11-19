@@ -375,7 +375,7 @@ export function PricesPage() {
       <div className="mx-auto max-w-2xl space-y-8">
         {/* Page header */}
         <div>
-          <h1 className="text-xl font-semibold text-slate-800">Preise & Kurse</h1>
+          <h1 className="text-xl font-semibold text-slate-800">Preise und Kurse</h1>
           <p className="mt-1 text-sm text-slate-500">
             Mitgliedsbeiträge und Kurspreise verwalten
           </p>

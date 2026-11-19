@@ -3,6 +3,34 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --slate-50: 248 250 252;
+    --slate-100: 241 245 249;
+    --slate-200: 226 232 240;
+    --slate-300: 203 213 225;
+    --slate-400: 148 163 184;
+    --slate-500: 100 116 139;
+    --slate-600: 71 85 105;
+    --slate-700: 51 65 85;
+    --slate-800: 30 41 59;
+    --slate-900: 15 23 42;
+  }
+
+  /* Dark-Modus: die Graustufen werden umgekehrt, Karten (bg-white) bekommen eine dunkle Fläche */
+  html.dark {
+    color-scheme: dark;
+    --slate-50: 15 23 42;
+    --slate-100: 38 50 70;
+    --slate-200: 51 65 85;
+    --slate-300: 71 85 105;
+    --slate-400: 120 135 155;
+    --slate-500: 148 163 184;
+    --slate-600: 178 190 206;
+    --slate-700: 203 213 225;
+    --slate-800: 226 232 240;
+    --slate-900: 241 245 249;
+  }
+
   html {
     font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   }
@@ -10,3 +38,32 @@
     @apply bg-slate-50 text-slate-800;
   }
 }
+
+/* Farbige Hinweisflächen und Texte im Dark-Modus (außerhalb von @layer, damit sie sicher greifen) */
+html.dark .bg-white,
+html.dark .hover\:bg-white:hover { background-color: rgb(30 41 59); }
+html.dark .bg-blue-50, html.dark .bg-blue-100 { background-color: rgb(59 130 246 / 0.18); }
+html.dark .bg-red-50 { background-color: rgb(239 68 68 / 0.16); }
+html.dark .bg-amber-50 { background-color: rgb(245 158 11 / 0.16); }
+html.dark .bg-emerald-50 { background-color: rgb(16 185 129 / 0.16); }
+html.dark .bg-violet-50 { background-color: rgb(139 92 246 / 0.18); }
+html.dark .bg-teal-50 { background-color: rgb(20 184 166 / 0.16); }
+html.dark .bg-indigo-50 { background-color: rgb(99 102 241 / 0.18); }
+html.dark .hover\:bg-blue-50:hover, html.dark .hover\:bg-blue-100:hover { background-color: rgb(59 130 246 / 0.28); }
+html.dark .hover\:bg-red-50:hover { background-color: rgb(239 68 68 / 0.25); }
+html.dark .hover\:bg-amber-50:hover { background-color: rgb(245 158 11 / 0.25); }
+html.dark .hover\:bg-violet-50:hover { background-color: rgb(139 92 246 / 0.28); }
+html.dark .hover\:bg-teal-50:hover { background-color: rgb(20 184 166 / 0.25); }
+html.dark .text-blue-600, html.dark .text-blue-700, html.dark .text-blue-800 { color: rgb(147 197 253); }
+html.dark .text-red-500, html.dark .text-red-600, html.dark .text-red-700 { color: rgb(252 165 165); }
+html.dark .text-amber-600, html.dark .text-amber-700, html.dark .text-amber-800 { color: rgb(252 211 77); }
+html.dark .text-emerald-600, html.dark .text-emerald-700 { color: rgb(110 231 183); }
+html.dark .text-violet-600, html.dark .text-indigo-600, html.dark .text-indigo-700 { color: rgb(196 181 253); }
+html.dark .text-teal-600 { color: rgb(94 234 212); }
+html.dark .border-red-200 { border-color: rgb(239 68 68 / 0.4); }
+html.dark .border-amber-200 { border-color: rgb(245 158 11 / 0.4); }
+html.dark .border-blue-200, html.dark .border-blue-300 { border-color: rgb(59 130 246 / 0.45); }
+html.dark .border-emerald-200 { border-color: rgb(16 185 129 / 0.4); }
+html.dark .bg-blue-600 { background-color: rgb(37 99 235); }
+html.dark input, html.dark select, html.dark textarea { background-color: rgb(15 23 42); }
+html.dark input::placeholder, html.dark textarea::placeholder { color: rgb(120 135 155); }
