@@ -128,7 +128,6 @@ const SELECTION_COLUMNS = [
   { header: 'Vorname', key: 'firstName', width: 22 },
   { header: 'Kennzeichen', key: 'flags', width: 30 },
   { header: 'Anzahl Scans', key: 'total', width: 14 },
-  { header: 'davon manuell', key: 'manualCount', width: 14 },
 ];
 
 // Zusätzliches Sheet "Übungsleiter" bzw. "Auswahl": Name und Anzahl der Scans pro ausgewähltem Mitglied
@@ -145,7 +144,6 @@ async function selectionSheet(from: string, to: string, period: string, flags: M
       // nur die ausgewählten Kennzeichen, die das Mitglied tatsächlich hat
       flags: flags.filter((f) => m.flags.includes(f)).map((f) => FLAG_LABELS[f]).join(', '),
       total: m.total,
-      manualCount: m.manualCount,
     })),
   };
 }
