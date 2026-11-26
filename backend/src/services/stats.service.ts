@@ -119,6 +119,7 @@ export async function getAttendanceByDay(from: string, to: string, flags: Member
     SELECT e.entry_date,
            COUNT(*) AS total,
            COUNT(*) FILTER (WHERE e.method = 'scan') AS scan_count,
+           COUNT(*) FILTER (WHERE e.method = 'manual') AS manual_count,
            COUNT(DISTINCT e.member_id) AS unique_members
     FROM entries e
     JOIN members m ON m.id = e.member_id
@@ -131,6 +132,7 @@ export async function getAttendanceByDay(from: string, to: string, flags: Member
     date: toDayString(r.entry_date),
     total: Number(r.total),
     scanCount: Number(r.scan_count),
+    manualCount: Number(r.manual_count),
     uniqueMembers: Number(r.unique_members),
   }));
 }
@@ -175,7 +177,7 @@ export async function getFlaggedSummary(from: string, to: string, flags: MemberF
   }[]>`
     SELECT m.member_number, m.last_name, m.first_name,
            m.is_trainer, m.needs_new_card, m.is_trial, m.is_preswim,
-           COUNT(*) AS total,
+           COUNT(*) AS total
     FROM entries e
     JOIN members m ON m.id = e.member_id
     WHERE e.entry_date BETWEEN ${from}::date AND ${to}::date ${flagClause(flags)}
