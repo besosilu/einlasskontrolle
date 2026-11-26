@@ -1,0 +1,130 @@
+/*
+ * Modernes Design ("Beckenblau"), aktiv über <html data-ui="modern">.
+ * Es tauscht Palette, Rundungen und Schatten der bestehenden Tailwind-Klassen aus und stellt die
+ * Navigation als Pillen in der Kopfzeile dar (ModernShell). Hell und dunkel werden getrennt behandelt.
+ * Selektoren mit Doppelpunkt (hover:, focus:) brauchen einen maskierten Doppelpunkt.
+ */
+
+:root {
+  --m-primary: 10 92 115;
+  --m-primary-strong: 8 72 91;
+  --m-primary-soft: 222 240 244;
+  --m-primary-soft-2: 200 228 236;
+  --m-ink: 11 37 48;
+  --m-accent: 255 112 82;
+}
+
+html.dark {
+  --m-primary: 22 140 168;
+  --m-primary-strong: 14 116 142;
+  --m-primary-soft: 22 140 168;
+  --m-ink: 7 26 36;
+}
+
+/* ---- Navigation (nur im modernen Layout gerendert) ---- */
+.m-brand-mark {
+  background: rgb(var(--m-primary));
+  color: #fff;
+}
+.m-nav { scrollbar-width: none; }
+.m-nav::-webkit-scrollbar { display: none; }
+.m-nav-link {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 9999px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(var(--slate-600));
+  transition: background-color 0.15s, color 0.15s;
+}
+.m-nav-link:hover { background: rgb(var(--slate-100)); color: rgb(var(--slate-800)); }
+.m-nav-link[aria-current='page'] { background: rgb(var(--m-primary)); color: #fff; }
+.m-nav-link:focus-visible { outline: 2px solid rgb(var(--m-primary)); outline-offset: 2px; }
+
+/* ---- Palette hell: kühle, leicht türkise Graustufen ---- */
+html[data-ui='modern']:not(.dark) {
+  --slate-50: 237 244 246;
+  --slate-100: 225 236 239;
+  --slate-200: 206 221 226;
+  --slate-300: 168 191 198;
+  --slate-400: 120 146 155;
+  --slate-500: 84 111 121;
+  --slate-600: 58 85 96;
+  --slate-700: 36 62 73;
+  --slate-800: 17 42 53;
+  --slate-900: 9 29 39;
+}
+
+/* ---- Primärfarbe: Blau wird Beckenblau (hell) ---- */
+html[data-ui='modern']:not(.dark) .bg-blue-600,
+html[data-ui='modern']:not(.dark) .bg-blue-500 { background-color: rgb(var(--m-primary)); }
+html[data-ui='modern']:not(.dark) .bg-blue-700,
+html[data-ui='modern']:not(.dark) .hover\:bg-blue-700:hover { background-color: rgb(var(--m-primary-strong)); }
+html[data-ui='modern']:not(.dark) .bg-blue-50 { background-color: rgb(var(--m-primary-soft)); }
+html[data-ui='modern']:not(.dark) .bg-blue-100,
+html[data-ui='modern']:not(.dark) .hover\:bg-blue-100:hover { background-color: rgb(var(--m-primary-soft-2)); }
+html[data-ui='modern']:not(.dark) .hover\:bg-blue-50:hover { background-color: rgb(var(--m-primary-soft)); }
+html[data-ui='modern']:not(.dark) .text-blue-500,
+html[data-ui='modern']:not(.dark) .text-blue-600,
+html[data-ui='modern']:not(.dark) .text-blue-700,
+html[data-ui='modern']:not(.dark) .text-blue-800 { color: rgb(var(--m-primary)); }
+html[data-ui='modern']:not(.dark) .border-blue-200,
+html[data-ui='modern']:not(.dark) .border-blue-300,
+html[data-ui='modern']:not(.dark) .border-blue-400,
+html[data-ui='modern']:not(.dark) .border-blue-500,
+html[data-ui='modern']:not(.dark) .border-blue-600 { border-color: rgb(var(--m-primary) / 0.55); }
+html[data-ui='modern']:not(.dark) .ring-blue-400 { --tw-ring-color: rgb(var(--m-primary) / 0.6); }
+html[data-ui='modern']:not(.dark) .focus\:ring-blue-500:focus { --tw-ring-color: rgb(var(--m-primary)); }
+
+/* ---- Primärfarbe dunkel ---- */
+html.dark[data-ui='modern'] .bg-blue-600,
+html.dark[data-ui='modern'] .bg-blue-500 { background-color: rgb(var(--m-primary)); }
+html.dark[data-ui='modern'] .bg-blue-50,
+html.dark[data-ui='modern'] .bg-blue-100 { background-color: rgb(var(--m-primary) / 0.22); }
+html.dark[data-ui='modern'] .text-blue-500,
+html.dark[data-ui='modern'] .text-blue-600,
+html.dark[data-ui='modern'] .text-blue-700,
+html.dark[data-ui='modern'] .text-blue-800 { color: rgb(125 215 232); }
+html.dark[data-ui='modern'] .focus\:ring-blue-500:focus { --tw-ring-color: rgb(var(--m-primary)); }
+
+/* ---- Form: größere Rundungen, weiche Karten ---- */
+html[data-ui='modern'] .rounded-lg { border-radius: 0.8rem; }
+html[data-ui='modern'] .rounded-xl { border-radius: 1.2rem; }
+html[data-ui='modern'] .rounded-2xl { border-radius: 1.5rem; }
+html[data-ui='modern'] .rounded-xl.bg-white,
+html[data-ui='modern'] .rounded-2xl.bg-white {
+  border-color: rgb(var(--slate-200) / 0.7);
+  box-shadow: 0 1px 2px rgb(9 29 39 / 0.04), 0 10px 28px -14px rgb(9 29 39 / 0.16);
+}
+html.dark[data-ui='modern'] .rounded-xl.bg-white,
+html.dark[data-ui='modern'] .rounded-2xl.bg-white {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 28px -14px rgb(0 0 0 / 0.5);
+}
+html[data-ui='modern'] h1,
+html[data-ui='modern'] h2 { letter-spacing: -0.02em; }
+
+/* ---- Kopfzeile: ohne Trennlinie, mit sanftem Schatten ---- */
+html[data-ui='modern'] header {
+  border-bottom-color: transparent;
+  box-shadow: 0 1px 0 rgb(var(--slate-200) / 0.6), 0 8px 24px -18px rgb(9 29 39 / 0.25);
+}
+
+/* ---- Das eine markante Element: der Tageszähler ---- */
+html[data-ui='modern'] .ui-count {
+  background: rgb(var(--m-ink)) !important;
+  padding: 0.3rem 1.1rem 0.3rem 0.85rem !important;
+}
+html[data-ui='modern'] .ui-count svg { color: rgb(var(--m-accent)) !important; }
+html[data-ui='modern'] .ui-count span { color: rgb(200 224 232) !important; font-weight: 500 !important; }
+html[data-ui='modern'] .ui-count .ui-count-n {
+  margin-right: 0.15rem !important;
+  font-size: 1.35rem !important;
+  line-height: 1 !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  color: #fff !important;
+}
+html.dark[data-ui='modern'] .ui-count { background: rgb(var(--m-primary) / 0.28) !important; }

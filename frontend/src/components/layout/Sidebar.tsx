@@ -12,16 +12,20 @@ const baseNavItems = [
   { to: '/logs', icon: ScrollText, label: 'Protokoll' },
 ];
 
-export function Sidebar() {
+// Gemeinsame Navigationspunkte für die klassische Seitenleiste und die moderne Kopfzeilen-Navigation
+export function useNavItems() {
   const { isAdmin } = useAuth();
-
-  const navItems = isAdmin
+  return isAdmin
     ? [
         ...baseNavItems,
         { to: '/users', icon: Users, label: 'Benutzer' },
         { to: '/einstellungen', icon: Settings, label: 'Einstellungen' },
       ]
     : baseNavItems;
+}
+
+export function Sidebar() {
+  const navItems = useNavItems();
 
   return (
     <aside className="flex h-full w-56 flex-col border-r border-slate-200 bg-white">

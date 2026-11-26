@@ -2,8 +2,13 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { ToastContainer } from '@/components/ui/Toast';
+import { ModernShell } from './ModernShell';
+import { useUiVersion } from '@/hooks/useUiVersion';
 
 export function AppShell() {
+  const { isModern } = useUiVersion();
+  if (isModern) return <ModernShell />;
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       <Sidebar />
