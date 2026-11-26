@@ -7,10 +7,10 @@ import { Loader2 } from 'lucide-react';
 
 const DOW_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-export function WorkloadChart() {
+export function WorkloadChart({ year }: { year: number }) {
   const { data, isLoading } = useQuery({
-    queryKey: ['workload'],
-    queryFn: statsApi.workload,
+    queryKey: ['workload', year],
+    queryFn: () => statsApi.workload(year),
   });
 
   if (isLoading) {

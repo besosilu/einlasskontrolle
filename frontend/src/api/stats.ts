@@ -30,8 +30,11 @@ export const statsApi = {
   dashboard: () =>
     client.get<Dashboard>('/stats/dashboard', { params: { date: todayIso() } }).then((r) => r.data),
 
-  workload: () =>
-    client.get<Workload>('/stats/workload').then((r) => r.data),
+  workload: (year?: number) =>
+    client.get<Workload>('/stats/workload', { params: { year } }).then((r) => r.data),
+
+  years: () =>
+    client.get<number[]>('/stats/years', { params: { date: todayIso() } }).then((r) => r.data),
 
   byDay: (params?: { from?: string; to?: string }) =>
     client.get<DayStats[]>('/stats/by-day', { params }).then((r) => r.data),

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   format,
@@ -26,10 +26,21 @@ function mondayFirst(date: Date): number {
   return (getDay(date) + 6) % 7;
 }
 
-export function CalendarView() {
+// Im gewählten Jahr: im aktuellen Jahr der aktuelle Monat, sonst der Dezember
+function startMonth(year: number, today: Date): Date {
+  return new Date(year, year === today.getFullYear() ? today.getMonth() : 11, 1);
+}
+
+export function CalendarView({ year }: { year: number }) {
   const today = new Date();
-  const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [currentMonth, setCurrentMonth] = useState(() => startMonth(year, today));
   const [selectedDate, setSelectedDate] = useState<Date>(today);
+
+  useEffect(() => {
+    const month = startMonth(year, new Date());
+    setCurrentMonth(month);
+    setSelectedDate(year === new Date().getFullYear() ? new Date() : endOfMonth(month));
+  }, [year]);
 
   const from = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
   const to = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
@@ -57,7 +68,8 @@ export function CalendarView() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => setCurrentMonth((m) => subMonths(m, 1))}
-          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+          disabled={currentMonth.getMonth() === 0}
+          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors disabled:cursor-not-allowed disabled:opacity-30"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -66,7 +78,7 @@ export function CalendarView() {
         </h2>
         <button
           onClick={() => setCurrentMonth((m) => addMonths(m, 1))}
-          disabled={format(addMonths(currentMonth, 1), 'yyyy-MM') > format(today, 'yyyy-MM')}
+          disabled={currentMonth.getMonth() === 11 || format(addMonths(currentMonth, 1), 'yyyy-MM') > format(today, 'yyyy-MM')}
           className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <ChevronRight className="h-4 w-4" />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { statsApi } from '@/api/stats';
@@ -7,8 +7,19 @@ import { formatDate, formatTime, todayIso } from '@/utils/dateUtils';
 import { Button } from '@/components/ui/Button';
 import { addDays, subDays, parseISO, format } from 'date-fns';
 
-export function DayView() {
-  const [selectedDate, setSelectedDate] = useState(todayIso());
+// Im aktuellen Jahr startet die Ansicht heute, in einem früheren Jahr am letzten Tag dieses Jahres
+function startDay(year: number): string {
+  return year === new Date().getFullYear() ? todayIso() : `${year}-12-31`;
+}
+
+export function DayView({ year }: { year: number }) {
+  const [selectedDate, setSelectedDate] = useState(() => startDay(year));
+  const minDate = `${year}-01-01`;
+  const maxDate = [`${year}-12-31`, todayIso()].sort()[0];
+
+  useEffect(() => {
+    setSelectedDate(startDay(year));
+  }, [year]);
 
   const from = selectedDate;
   const to = selectedDate;
@@ -31,16 +42,18 @@ export function DayView() {
     <div className="space-y-4">
       {/* Date Navigation */}
       <div className="flex items-center gap-3">
-        <Button variant="secondary" size="sm" onClick={() => changeDay(-1)}>
+        <Button variant="secondary" size="sm" onClick={() => changeDay(-1)} disabled={selectedDate <= minDate}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <input
           type="date"
           value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
+          min={minDate}
+          max={maxDate}
+          onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
           className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
-        <Button variant="secondary" size="sm" onClick={() => changeDay(1)} disabled={selectedDate >= todayIso()}>
+        <Button variant="secondary" size="sm" onClick={() => changeDay(1)} disabled={selectedDate >= maxDate}>
           <ChevronRight className="h-4 w-4" />
         </Button>
         <span className="text-sm text-slate-500">{formatDate(selectedDate)}</span>

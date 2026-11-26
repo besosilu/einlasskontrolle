@@ -149,6 +149,10 @@ docker restart einlasskontrolle
 
 Der Ordner `backups/` ist in `.gitignore`, weil er personenbezogene Daten enthält. Er wird inzwischen doppelt genutzt: als Ablage für eigene, manuell erzeugte `pg_dump`-Dateien wie oben **und** als `BACKUP_DIR` der App für die strukturierten JSON-Sicherungen (siehe nächster Abschnitt) - beides kann nebeneinander im selben Ordner liegen.
 
+## Statistiken nach Jahr
+
+Auf der Statistik-Seite wählt die Auswahl **Jahr** (oben rechts) das Jahr für Kalender, Übersicht, Pro Tag, Pro Mitglied und Auslastung. Standard ist das aktuelle Jahr; angeboten werden alle Jahre mit Einträgen (Jahre in der Zukunft nicht). API: `GET /stats/years`, `GET /stats/workload?year=yyyy`.
+
 ## Dunkler Modus
 
 In der Kopfzeile schaltet der Mond-/Sonne-Knopf zwischen hellem und dunklem Modus um. Die Wahl wird im Browser gespeichert; Standard ist hell.

@@ -15,10 +15,16 @@ type Tab = 'summary' | 'calendar' | 'by-day' | 'by-member' | 'new-card' | 'workl
 
 export function StatsPage() {
   const [tab, setTab] = useState<Tab>('calendar');
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState(currentYear);
+
+  const { data: entryYears = [] } = useQuery({ queryKey: ['stats-years'], queryFn: statsApi.years });
+  // das aktuelle Jahr ist immer wählbar, auch wenn es noch keine Einträge gibt
+  const years = Array.from(new Set([currentYear, ...entryYears])).sort((a, b) => b - a);
 
   const { data: summary, isLoading } = useQuery({
-    queryKey: ['stats-summary'],
-    queryFn: () => statsApi.summary(),
+    queryKey: ['stats-summary', year],
+    queryFn: () => statsApi.summary({ from: `${year}-01-01`, to: `${year}-12-31` }),
     enabled: tab === 'summary',
   });
 
@@ -34,7 +40,23 @@ export function StatsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-xl font-semibold text-slate-800">Statistiken</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-xl font-semibold text-slate-800">Statistiken</h1>
+        {tab !== 'new-card' && tab !== 'chat' && (
+          <label className="flex items-center gap-2 text-sm text-slate-500">
+            Jahr
+            <select
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {years.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
@@ -90,13 +112,13 @@ export function StatsPage() {
         ) : null
       )}
 
-      {tab === 'calendar' && <CalendarView />}
-      {tab === 'by-day' && <DayView />}
-      {tab === 'by-member' && <MemberView />}
+      {tab === 'calendar' && <CalendarView year={year} />}
+      {tab === 'by-day' && <DayView year={year} />}
+      {tab === 'by-member' && <MemberView year={year} />}
       {tab === 'new-card' && <NewCardView />}
       {tab === 'workload' && (
         <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <WorkloadChart />
+          <WorkloadChart year={year} />
         </div>
       )}
       {tab === 'chat' && <StatsChat />}

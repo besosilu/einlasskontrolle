@@ -17,10 +17,17 @@ export async function dashboard(req: Request, res: Response, next: NextFunction)
   } catch (err) { next(err); }
 }
 
-export async function workload(_req: Request, res: Response, next: NextFunction) {
+export async function workload(req: Request, res: Response, next: NextFunction) {
   try {
-    const data = await statsService.getWorkload();
+    const year = typeof req.query['year'] === 'string' && /^\d{4}$/.test(req.query['year']) ? req.query['year'] : undefined;
+    const data = await statsService.getWorkload(year);
     res.json(data);
+  } catch (err) { next(err); }
+}
+
+export async function years(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.json(await statsService.getEntryYears(parseDay(req.query['date'])));
   } catch (err) { next(err); }
 }
 

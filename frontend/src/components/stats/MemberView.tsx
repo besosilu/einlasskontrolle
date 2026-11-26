@@ -8,7 +8,7 @@ import { EntryMethodBadge } from '@/components/entry/EntryMethodBadge';
 import { formatDate, formatMonth, formatTime } from '@/utils/dateUtils';
 import type { Member } from '@/types';
 
-export function MemberView() {
+export function MemberView({ year }: { year: number }) {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 
   const { data: stats, isLoading } = useQuery({
@@ -16,6 +16,10 @@ export function MemberView() {
     queryFn: () => statsApi.byMember(selectedMember!.id),
     enabled: !!selectedMember,
   });
+
+  // Die Auswertung zeigt nur das gewählte Jahr
+  const visitDates = stats?.visitDates.filter((v) => v.date.startsWith(`${year}-`)) ?? [];
+  const visitsByMonth = stats?.visitsByMonth.filter((m) => m.month.startsWith(`${year}-`)) ?? [];
 
   return (
     <div className="space-y-4">
@@ -45,13 +49,13 @@ export function MemberView() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-xl border border-slate-200 bg-white p-4 text-center">
-              <p className="text-3xl font-bold text-blue-600">{stats.totalVisits}</p>
-              <p className="text-xs text-slate-500">Besuche gesamt</p>
+              <p className="text-3xl font-bold text-blue-600">{visitDates.length}</p>
+              <p className="text-xs text-slate-500">Besuche {year}</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white p-4">
               <p className="text-xs font-semibold text-slate-600 mb-2">Pro Monat</p>
               <div className="space-y-1 max-h-24 overflow-y-auto">
-                {stats.visitsByMonth.map(({ month, count }) => (
+                {visitsByMonth.map(({ month, count }) => (
                   <div key={month} className="flex justify-between text-xs">
                     <span className="text-slate-600">{formatMonth(month)}</span>
                     <span className="font-medium text-slate-800">{count}</span>
@@ -66,7 +70,7 @@ export function MemberView() {
               <p className="text-sm font-semibold text-slate-700">Besuchsverlauf</p>
             </div>
             <div className="divide-y divide-slate-50 max-h-96 overflow-y-auto">
-              {stats.visitDates.map((v) => (
+              {visitDates.map((v) => (
                 <div key={v.entryId} className="flex items-center gap-3 px-5 py-3">
                   <span className="flex-1 text-sm text-slate-700">{formatDate(v.date)}</span>
                   <EntryMethodBadge method={v.method} />

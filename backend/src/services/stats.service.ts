@@ -52,8 +52,17 @@ export async function getDashboard(day: string = toDayString(new Date())) {
   };
 }
 
-export async function getWorkload() {
-  // Entries per weekday (0=Mon..6=Sun) and per hour (0..23) for the last 90 days
+// Jahre mit Einträgen (bis zum Browser-Datum, Einträge mit Datum in der Zukunft zählen nicht)
+export async function getEntryYears(until: string = toDayString(new Date())): Promise<number[]> {
+  const rows = await sql<{ year: number }[]>`
+    SELECT DISTINCT EXTRACT(YEAR FROM entry_date)::int AS year FROM entries
+    WHERE entry_date <= ${until}::date ORDER BY year DESC
+  `;
+  return rows.map((r) => r.year);
+}
+
+export async function getWorkload(year?: string) {
+  // Entries per weekday (0=Mon..6=Sun) and per hour (0..23) for the given year, default the last 90 days
   const since = new Date();
   since.setDate(since.getDate() - 90);
 
@@ -63,7 +72,7 @@ export async function getWorkload() {
       EXTRACT(HOUR FROM entry_time)::integer AS hour,
       COUNT(*) AS count
     FROM entries
-    WHERE entry_time >= ${since}
+    WHERE ${year ? sql`entry_date BETWEEN ${`${year}-01-01`}::date AND ${`${year}-12-31`}::date` : sql`entry_time >= ${since}`}
     GROUP BY dow, hour
     ORDER BY dow, hour
   `;
