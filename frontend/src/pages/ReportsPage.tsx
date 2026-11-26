@@ -9,7 +9,7 @@ import { showToast } from '@/components/ui/Toast';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { Landmark, Download, RefreshCw, Database } from 'lucide-react';
-import type { ReportFlag } from '@/types';
+import type { MonthlyReport, ReportFlag } from '@/types';
 
 const FLAG_LABELS: Record<ReportFlag, string> = {
   trainer: 'Übungsleiter',
@@ -77,6 +77,16 @@ function FinanzamtTab() {
       queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
     },
     onError: () => showToast('error', 'Bericht konnte nicht erzeugt werden.'),
+  });
+
+  // Erzeugt den Bericht mit denselben Einstellungen (Zeitraum, Format, Kennzeichen) neu aus den aktuellen Daten
+  const refreshMutation = useMutation({
+    mutationFn: (r: MonthlyReport) => reportsApi.generate(r.scope, r.format, r.flags, r.period),
+    onSuccess: () => {
+      showToast('success', 'Bericht aktualisiert.');
+      queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+    },
+    onError: () => showToast('error', 'Bericht konnte nicht aktualisiert werden.'),
   });
 
   async function download(filename: string, file?: string) {
@@ -209,6 +219,17 @@ function FinanzamtTab() {
                     {(r.sizeBytes / 1024).toFixed(1)} KB
                   </p>
                 </div>
+                <button
+                  onClick={() => refreshMutation.mutate(r)}
+                  disabled={refreshMutation.isPending}
+                  title="Mit den aktuellen Daten neu erzeugen"
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                >
+                  <RefreshCw
+                    className={cn('h-3.5 w-3.5', refreshMutation.isPending && refreshMutation.variables?.filename === r.filename && 'animate-spin')}
+                  />
+                  Aktualisieren
+                </button>
                 {r.format === 'xlsx' ? (
                   <button
                     onClick={() => download(r.filename)}
