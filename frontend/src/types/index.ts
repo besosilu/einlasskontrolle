@@ -163,12 +163,14 @@ export interface ImportLogsResult {
   total: number;
 }
 
+export type ReportFlag = 'trainer' | 'new_card' | 'trial' | 'pre_swim';
+
 export interface MonthlyReport {
   filename: string;
   period: string;
   scope: 'month' | 'year';
   format: 'xlsx' | 'csv' | 'md';
-  trainersOnly: boolean;
+  flags: ReportFlag[];
   files: string[];
   sizeBytes: number;
   createdAt: string;

@@ -11,7 +11,14 @@ import { showToast } from '@/components/ui/Toast';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Trash2, FileText, ScanLine, Landmark, Download, RefreshCw, Database } from 'lucide-react';
-import type { ImportLog, Entry } from '@/types';
+import type { ImportLog, Entry, ReportFlag } from '@/types';
+
+const FLAG_LABELS: Record<ReportFlag, string> = {
+  trainer: 'Übungsleiter',
+  new_card: 'Neuer Ausweis',
+  trial: 'Schnupper-Training',
+  pre_swim: 'Vorschwimmen',
+};
 
 type Tab = 'import' | 'scans' | 'finanzamt' | 'backup';
 
@@ -88,7 +95,7 @@ function FinanzamtTab() {
   const [scope, setScope] = useState<'month' | 'year'>('month');
   const [period, setPeriod] = useState('');
   const [format, setFormat] = useState<'xlsx' | 'csv' | 'md'>('xlsx');
-  const [trainersOnly, setTrainersOnly] = useState(false);
+  const [flags, setFlags] = useState<ReportFlag[]>([]);
   const [openFolder, setOpenFolder] = useState<string | null>(null);
 
   const { data: reports = [], isLoading } = useQuery({
@@ -97,7 +104,7 @@ function FinanzamtTab() {
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => reportsApi.generate(scope, format, trainersOnly, period || undefined),
+    mutationFn: () => reportsApi.generate(scope, format, flags, period || undefined),
     onSuccess: () => {
       showToast('success', format === 'xlsx' ? 'Bericht erzeugt (Excel).' : 'Bericht erzeugt (Ordner mit Dateien).');
       queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
@@ -185,15 +192,21 @@ function FinanzamtTab() {
             />
           )}
 
-          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-600">
-            <input
-              type="checkbox"
-              checked={trainersOnly}
-              onChange={(e) => setTrainersOnly(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-slate-300"
-            />
-            nur Übungsleiter
-          </label>
+          <fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <legend className="sr-only">Nur Mitglieder mit diesem Kennzeichen exportieren</legend>
+            <span className="text-xs text-slate-500">Nur:</span>
+            {(Object.keys(FLAG_LABELS) as ReportFlag[]).map((f) => (
+              <label key={f} className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={flags.includes(f)}
+                  onChange={(e) => setFlags((cur) => (e.target.checked ? [...cur, f] : cur.filter((x) => x !== f)))}
+                  className="h-3.5 w-3.5 rounded border-slate-300"
+                />
+                {FLAG_LABELS[f]}
+              </label>
+            ))}
+          </fieldset>
 
           <button
             onClick={() => generateMutation.mutate()}
@@ -221,7 +234,7 @@ function FinanzamtTab() {
                   <p className="text-sm font-medium text-slate-800">
                     {r.period}
                     <span className="ml-2 text-xs font-normal text-slate-400">
-                      {r.scope === 'year' ? 'Jahr' : 'Monat'}{r.trainersOnly ? ' · nur Übungsleiter' : ''} · {r.format === 'csv' ? 'CSV' : r.format === 'md' ? 'Markdown' : 'Excel'}
+                      {r.scope === 'year' ? 'Jahr' : 'Monat'}{r.flags.length ? ` · ${r.flags.map((f) => FLAG_LABELS[f]).join(', ')}` : ''} · {r.format === 'csv' ? 'CSV' : r.format === 'md' ? 'Markdown' : 'Excel'}
                     </span>
                   </p>
                   <p className="text-xs text-slate-400">

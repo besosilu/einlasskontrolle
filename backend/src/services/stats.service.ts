@@ -91,7 +91,19 @@ export async function getWorkload() {
 // Groups by the entry_date column (the browser's calendar day at write time), not entry_time -
 // getStatsByDay below buckets by entry_time.toISOString() (UTC), which is wrong for anything
 // date-sensitive (see docs/plans/2026-10-finanzamt-bericht.md). Used for the monthly Finanzamt report.
-export async function getAttendanceByDay(from: string, to: string, trainersOnly = false) {
+// Kennzeichen, nach denen Berichte gefiltert werden können (ein Mitglied passt, wenn mindestens eines zutrifft)
+export type MemberFlag = 'trainer' | 'new_card' | 'trial' | 'pre_swim';
+export const MEMBER_FLAGS: MemberFlag[] = ['trainer', 'new_card', 'trial', 'pre_swim'];
+
+function flagClause(flags: MemberFlag[]) {
+  if (flags.length === 0) return sql``;
+  const parts = flags.map((f) =>
+    f === 'trainer' ? sql`m.is_trainer` : f === 'new_card' ? sql`m.needs_new_card` : f === 'trial' ? sql`m.is_trial` : sql`m.is_preswim`
+  );
+  return sql`AND (${parts.reduce((a, b) => sql`${a} OR ${b}`)})`;
+}
+
+export async function getAttendanceByDay(from: string, to: string, flags: MemberFlag[] = []) {
   const rows = await sql<{
     entry_date: Date; total: string; scan_count: string; manual_count: string; unique_members: string;
   }[]>`
@@ -102,7 +114,7 @@ export async function getAttendanceByDay(from: string, to: string, trainersOnly 
            COUNT(DISTINCT e.member_id) AS unique_members
     FROM entries e
     JOIN members m ON m.id = e.member_id
-    WHERE e.entry_date BETWEEN ${from}::date AND ${to}::date ${trainersOnly ? sql`AND m.is_trainer` : sql``}
+    WHERE e.entry_date BETWEEN ${from}::date AND ${to}::date ${flagClause(flags)}
     GROUP BY e.entry_date
     ORDER BY e.entry_date
   `;
@@ -117,12 +129,12 @@ export async function getAttendanceByDay(from: string, to: string, trainersOnly 
 }
 
 // Members with an entry on a given day (für den Finanzamt-Tagesbericht), unabhängig von Kennzeichen.
-export async function getMembersForDay(day: string, trainersOnly = false) {
+export async function getMembersForDay(day: string, flags: MemberFlag[] = []) {
   const rows = await sql<{ member_number: string | null; last_name: string; first_name: string }[]>`
     SELECT DISTINCT m.member_number, m.last_name, m.first_name
     FROM entries e
     JOIN members m ON m.id = e.member_id
-    WHERE e.entry_date = ${day}::date ${trainersOnly ? sql`AND m.is_trainer` : sql``}
+    WHERE e.entry_date = ${day}::date ${flagClause(flags)}
     ORDER BY m.last_name, m.first_name
   `;
   return rows.map((r) => ({ memberNumber: r.member_number, lastName: r.last_name, firstName: r.first_name }));
@@ -130,14 +142,14 @@ export async function getMembersForDay(day: string, trainersOnly = false) {
 
 // Alle Einträge eines Monats (ein Zeile pro Besuch, Mitglieder können mehrfach vorkommen) für den
 // Finanzamt-Jahresbericht (ein Sheet pro Monat statt pro Tag).
-export async function getEntriesForMonth(from: string, to: string, trainersOnly = false) {
+export async function getEntriesForMonth(from: string, to: string, flags: MemberFlag[] = []) {
   const rows = await sql<{
     entry_date: Date; member_number: string | null; last_name: string; first_name: string;
   }[]>`
     SELECT e.entry_date, m.member_number, m.last_name, m.first_name
     FROM entries e
     JOIN members m ON m.id = e.member_id
-    WHERE e.entry_date BETWEEN ${from}::date AND ${to}::date ${trainersOnly ? sql`AND m.is_trainer` : sql``}
+    WHERE e.entry_date BETWEEN ${from}::date AND ${to}::date ${flagClause(flags)}
     ORDER BY e.entry_date, m.last_name, m.first_name
   `;
   return rows.map((r) => ({
@@ -148,18 +160,20 @@ export async function getEntriesForMonth(from: string, to: string, trainersOnly 
   }));
 }
 
-// Übungsleiter mit Anzahl ihrer Einlässe im Zeitraum (Finanzamt-Bericht "nur Übungsleiter")
-export async function getTrainerSummary(from: string, to: string) {
+// Mitglieder mit mindestens einem der gewählten Kennzeichen und Anzahl ihrer Einlässe im Zeitraum
+export async function getFlaggedSummary(from: string, to: string, flags: MemberFlag[]) {
   const rows = await sql<{
     member_number: string | null; last_name: string; first_name: string; total: string; manual_count: string;
+    is_trainer: boolean; needs_new_card: boolean; is_trial: boolean; is_preswim: boolean;
   }[]>`
     SELECT m.member_number, m.last_name, m.first_name,
+           m.is_trainer, m.needs_new_card, m.is_trial, m.is_preswim,
            COUNT(*) AS total,
            COUNT(*) FILTER (WHERE e.method = 'manual') AS manual_count
     FROM entries e
     JOIN members m ON m.id = e.member_id
-    WHERE m.is_trainer AND e.entry_date BETWEEN ${from}::date AND ${to}::date
-    GROUP BY m.id, m.member_number, m.last_name, m.first_name
+    WHERE e.entry_date BETWEEN ${from}::date AND ${to}::date ${flagClause(flags)}
+    GROUP BY m.id
     ORDER BY m.last_name, m.first_name
   `;
   return rows.map((r) => ({
@@ -168,16 +182,19 @@ export async function getTrainerSummary(from: string, to: string) {
     firstName: r.first_name,
     total: Number(r.total),
     manualCount: Number(r.manual_count),
+    flags: MEMBER_FLAGS.filter(
+      (f) => ({ trainer: r.is_trainer, new_card: r.needs_new_card, trial: r.is_trial, pre_swim: r.is_preswim })[f]
+    ),
   }));
 }
 
 // Eintritte gesamt pro Monat (für den Finanzamt-Jahresbericht-Übersicht-Sheet).
-export async function getAttendanceByMonth(from: string, to: string, trainersOnly = false) {
+export async function getAttendanceByMonth(from: string, to: string, flags: MemberFlag[] = []) {
   const rows = await sql<{ month: Date; total: string }[]>`
     SELECT date_trunc('month', e.entry_date)::date AS month, COUNT(*) AS total
     FROM entries e
     JOIN members m ON m.id = e.member_id
-    WHERE e.entry_date BETWEEN ${from}::date AND ${to}::date ${trainersOnly ? sql`AND m.is_trainer` : sql``}
+    WHERE e.entry_date BETWEEN ${from}::date AND ${to}::date ${flagClause(flags)}
     GROUP BY month
     ORDER BY month
   `;

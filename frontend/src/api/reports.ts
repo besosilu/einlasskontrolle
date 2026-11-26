@@ -1,11 +1,11 @@
 import client from './client';
-import type { MonthlyReport } from '../types';
+import type { MonthlyReport, ReportFlag } from '../types';
 
 export const reportsApi = {
   list: () => client.get<MonthlyReport[]>('/reports').then((r) => r.data),
 
-  generate: (scope: 'month' | 'year', format: 'xlsx' | 'csv' | 'md', trainersOnly: boolean, period?: string) =>
-    client.post<{ filename: string }>('/reports/generate', undefined, { params: { scope, period, format, trainersOnly } }).then((r) => r.data),
+  generate: (scope: 'month' | 'year', format: 'xlsx' | 'csv' | 'md', flags: ReportFlag[], period?: string) =>
+    client.post<{ filename: string }>('/reports/generate', undefined, { params: { scope, period, format, flags: flags.join(',') } }).then((r) => r.data),
 
   download: (filename: string, file?: string) =>
     client

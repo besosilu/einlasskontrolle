@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import ExcelJS from 'exceljs';
 import * as statsService from './stats.service.js';
+import { MEMBER_FLAGS, type MemberFlag } from './stats.service.js';
 import { csvField } from './entries.service.js';
 import { monthRange, yearRange, getLastCompletedMonth } from '../lib/dateParams.js';
 
@@ -25,16 +26,35 @@ interface ReportSheet {
   summary?: (string | number)[];
 }
 
-// Berichte nur mit Übungsleitern tragen dieses Kürzel im Namen (neben dem Bericht über alle Besucher)
-const TRAINER_SUFFIX = '_Uebungsleiter';
+// Berichte mit Kennzeichen-Auswahl tragen diese Kürzel im Namen (neben dem Bericht über alle Mitglieder)
+const FLAG_FILE: Record<MemberFlag, string> = {
+  trainer: 'Uebungsleiter',
+  new_card: 'NeuerAusweis',
+  trial: 'Schnupper',
+  pre_swim: 'Vorschwimmen',
+};
+const FLAG_LABELS: Record<MemberFlag, string> = {
+  trainer: 'Übungsleiter',
+  new_card: 'Neuer Ausweis',
+  trial: 'Schnupper-Training',
+  pre_swim: 'Vorschwimmen',
+};
 
-// CSV-Berichte liegen als Ordner (ohne Endung) im Berichtsordner, Excel-Berichte als .xlsx-Datei
-function monthlyBase(yearMonth: string, trainersOnly = false): string {
-  return `Finanzamt_Monat_${yearMonth}${trainersOnly ? TRAINER_SUFFIX : ''}`;
+function flagSuffix(flags: MemberFlag[]): string {
+  return flags.length ? `_${flags.map((f) => FLAG_FILE[f]).join('-')}` : '';
 }
 
-function yearlyBase(year: string, trainersOnly = false): string {
-  return `Finanzamt_Jahr_${year}${trainersOnly ? TRAINER_SUFFIX : ''}`;
+function statsLabel(flags: MemberFlag[]): string {
+  return flags.length ? `Statistik ${flags.map((f) => FLAG_LABELS[f]).join(' + ')}` : 'Statistik';
+}
+
+// CSV-Berichte liegen als Ordner (ohne Endung) im Berichtsordner, Excel-Berichte als .xlsx-Datei
+function monthlyBase(yearMonth: string, flags: MemberFlag[] = []): string {
+  return `Finanzamt_Monat_${yearMonth}${flagSuffix(flags)}`;
+}
+
+function yearlyBase(year: string, flags: MemberFlag[] = []): string {
+  return `Finanzamt_Jahr_${year}${flagSuffix(flags)}`;
 }
 
 async function writeXlsx(sheets: ReportSheet[], base: string): Promise<{ filename: string; path: string }> {
@@ -102,22 +122,31 @@ function writeMarkdownFolder(sheets: ReportSheet[], base: string): { filename: s
   return { filename: folder, path: finalPath };
 }
 
-const TRAINER_COLUMNS = [
+const SELECTION_COLUMNS = [
   { header: 'Mitgliedsnummer', key: 'memberNumber', width: 16 },
   { header: 'Name', key: 'lastName', width: 22 },
   { header: 'Vorname', key: 'firstName', width: 22 },
+  { header: 'Kennzeichen', key: 'flags', width: 30 },
   { header: 'Anzahl Scans', key: 'total', width: 14 },
   { header: 'davon manuell', key: 'manualCount', width: 14 },
 ];
 
-// Zusätzliches Sheet "Übungsleiter": Name und Anzahl der Scans pro Übungsleiter im Berichtszeitraum
-async function trainerSheet(from: string, to: string, period: string): Promise<ReportSheet> {
-  const trainers = await statsService.getTrainerSummary(from, to);
+// Zusätzliches Sheet "Übungsleiter" bzw. "Auswahl": Name und Anzahl der Scans pro ausgewähltem Mitglied
+async function selectionSheet(from: string, to: string, period: string, flags: MemberFlag[]): Promise<ReportSheet> {
+  const members = await statsService.getFlaggedSummary(from, to, flags);
   return {
-    name: 'Übungsleiter',
-    summary: ['Statistik Übungsleiter', period, 'Übungsleiter', trainers.length, 'Scans gesamt', trainers.reduce((sum, t) => sum + t.total, 0)],
-    columns: TRAINER_COLUMNS,
-    rows: trainers.map((t) => ({ ...t, memberNumber: t.memberNumber ?? '' })),
+    name: flags.length === 1 && flags[0] === 'trainer' ? 'Übungsleiter' : 'Auswahl',
+    summary: [statsLabel(flags), period, 'Mitglieder', members.length, 'Scans gesamt', members.reduce((sum, m) => sum + m.total, 0)],
+    columns: SELECTION_COLUMNS,
+    rows: members.map((m) => ({
+      memberNumber: m.memberNumber ?? '',
+      lastName: m.lastName,
+      firstName: m.firstName,
+      // nur die ausgewählten Kennzeichen, die das Mitglied tatsächlich hat
+      flags: flags.filter((f) => m.flags.includes(f)).map((f) => FLAG_LABELS[f]).join(', '),
+      total: m.total,
+      manualCount: m.manualCount,
+    })),
   };
 }
 
@@ -136,10 +165,10 @@ export { getLastCompletedMonth };
 export async function generateMonthlyAttendanceReport(
   yearMonth: string,
   format: ReportFormat = 'xlsx',
-  trainersOnly = false
+  flags: MemberFlag[] = []
 ): Promise<{ filename: string; path: string }> {
   const { from, to, days } = monthRange(yearMonth);
-  const dayRows = await statsService.getAttendanceByDay(from, to, trainersOnly);
+  const dayRows = await statsService.getAttendanceByDay(from, to, flags);
   const byDate = new Map(dayRows.map((r) => [r.date, r]));
 
   const sheets: ReportSheet[] = [
@@ -151,7 +180,7 @@ export async function generateMonthlyAttendanceReport(
       ],
       rows: days.map((day) => ({ date: day, total: byDate.get(day)?.total ?? 0 })),
       summary: [
-        trainersOnly ? 'Statistik Übungsleiter' : 'Statistik',
+        statsLabel(flags),
         yearMonth,
         'Eintritte gesamt',
         dayRows.reduce((sum, r) => sum + r.total, 0),
@@ -161,30 +190,30 @@ export async function generateMonthlyAttendanceReport(
     },
   ];
 
-  if (trainersOnly) sheets.push(await trainerSheet(from, to, yearMonth));
+  if (flags.length) sheets.push(await selectionSheet(from, to, yearMonth, flags));
 
   // Ein Sheet pro Tag, an dem tatsächlich gescannt wurde (keine leeren Tage).
   for (const day of days) {
     if ((byDate.get(day)?.total ?? 0) === 0) continue;
-    const members = await statsService.getMembersForDay(day, trainersOnly);
+    const members = await statsService.getMembersForDay(day, flags);
     sheets.push({
       name: day,
-      summary: [trainersOnly ? 'Statistik Übungsleiter' : 'Statistik', day, 'Eintritte gesamt', members.length, 'Verschiedene Mitglieder', distinctVisitors(members)],
+      summary: [statsLabel(flags), day, 'Eintritte gesamt', members.length, 'Verschiedene Mitglieder', distinctVisitors(members)],
       columns: MEMBER_COLUMNS,
       rows: members.map((m) => ({ memberNumber: m.memberNumber ?? '', lastName: m.lastName, firstName: m.firstName })),
     });
   }
 
-  return writeReport(sheets, monthlyBase(yearMonth, trainersOnly), format);
+  return writeReport(sheets, monthlyBase(yearMonth, flags), format);
 }
 
 export async function generateYearlyAttendanceReport(
   year: string,
   format: ReportFormat = 'xlsx',
-  trainersOnly = false
+  flags: MemberFlag[] = []
 ): Promise<{ filename: string; path: string }> {
   const { from, to, months } = yearRange(year);
-  const monthRows = await statsService.getAttendanceByMonth(from, to, trainersOnly);
+  const monthRows = await statsService.getAttendanceByMonth(from, to, flags);
   const byMonth = new Map(monthRows.map((r) => [r.month, r.total]));
 
   const sheets: ReportSheet[] = [
@@ -196,7 +225,7 @@ export async function generateYearlyAttendanceReport(
       ],
       rows: months.map((month) => ({ month, total: byMonth.get(month) ?? 0 })),
       summary: [
-        trainersOnly ? 'Statistik Übungsleiter' : 'Statistik',
+        statsLabel(flags),
         year,
         'Eintritte gesamt',
         [...byMonth.values()].reduce((sum, n) => sum + n, 0),
@@ -206,23 +235,23 @@ export async function generateYearlyAttendanceReport(
     },
   ];
 
-  if (trainersOnly) sheets.push(await trainerSheet(from, to, year));
+  if (flags.length) sheets.push(await selectionSheet(from, to, year, flags));
 
   // Ein Sheet pro Monat mit Eintritten (statt pro Tag) - sonst zu viele Sheets für ein ganzes Jahr.
   // Jede Zeile ist ein einzelner Besuch; Mitglieder, die mehrfach im Monat waren, erscheinen mehrfach.
   for (const month of months) {
     if ((byMonth.get(month) ?? 0) === 0) continue;
     const { from: mFrom, to: mTo } = monthRange(month);
-    const entries = await statsService.getEntriesForMonth(mFrom, mTo, trainersOnly);
+    const entries = await statsService.getEntriesForMonth(mFrom, mTo, flags);
     sheets.push({
       name: month,
-      summary: [trainersOnly ? 'Statistik Übungsleiter' : 'Statistik', month, 'Eintritte gesamt', entries.length, 'Verschiedene Mitglieder', distinctVisitors(entries)],
+      summary: [statsLabel(flags), month, 'Eintritte gesamt', entries.length, 'Verschiedene Mitglieder', distinctVisitors(entries)],
       columns: MEMBER_COLUMNS,
       rows: entries.map((e) => ({ memberNumber: e.memberNumber ?? '', lastName: e.lastName, firstName: e.firstName })),
     });
   }
 
-  return writeReport(sheets, yearlyBase(year, trainersOnly), format);
+  return writeReport(sheets, yearlyBase(year, flags), format);
 }
 
 export async function ensureMonthlyReportsUpToDate(): Promise<void> {
@@ -233,16 +262,25 @@ export async function ensureMonthlyReportsUpToDate(): Promise<void> {
   }
 }
 
-const MONTHLY_FILE_PATTERN = /^Finanzamt_Monat_(\d{4}-\d{2})(_Uebungsleiter)?(\.xlsx|_md)?$/;
-const YEARLY_FILE_PATTERN = /^Finanzamt_Jahr_(\d{4})(_Uebungsleiter)?(\.xlsx|_md)?$/;
+// Namensteil der Kennzeichen-Auswahl, z. B. "_Uebungsleiter-Schnupper"
+const FLAG_ALT = Object.values(FLAG_FILE).join('|');
+const FLAG_PART = `(_(?:${FLAG_ALT})(?:-(?:${FLAG_ALT}))*)?`;
+const MONTHLY_FILE_PATTERN = new RegExp(String.raw`^Finanzamt_Monat_(\d{4}-\d{2})${FLAG_PART}(\.xlsx|_md)?$`);
+const YEARLY_FILE_PATTERN = new RegExp(String.raw`^Finanzamt_Jahr_(\d{4})${FLAG_PART}(\.xlsx|_md)?$`);
+
+function parseFlagSuffix(suffix: string | undefined): MemberFlag[] {
+  if (!suffix) return [];
+  const names = suffix.slice(1).split('-');
+  return MEMBER_FLAGS.filter((f) => names.includes(FLAG_FILE[f]));
+}
 
 export interface ReportFile {
   filename: string;
   period: string;
   scope: 'month' | 'year';
   format: ReportFormat;
-  /** true = Bericht nur mit Übungsleitern */
-  trainersOnly: boolean;
+  /** Kennzeichen-Auswahl; leer = alle Mitglieder */
+  flags: MemberFlag[];
   /** Nur bei CSV-/Markdown-Ordnern: die enthaltenen Dateien */
   files: string[];
   sizeBytes: number;
@@ -264,18 +302,18 @@ export function listReports(): ReportFile[] {
       // Excel = Datei mit .xlsx, CSV = Ordner ohne Endung, Markdown = Ordner mit Endung _md
       if (entry.isFile() && match[3] === '.xlsx') {
         const stat = fs.statSync(full);
-        return [{ filename: entry.name, period: match[1], scope, format: 'xlsx', trainersOnly: !!match[2], files: [], sizeBytes: stat.size, createdAt: stat.mtime.toISOString() }];
+        return [{ filename: entry.name, period: match[1], scope, format: 'xlsx', flags: parseFlagSuffix(match[2]), files: [], sizeBytes: stat.size, createdAt: stat.mtime.toISOString() }];
       }
       if (entry.isDirectory() && match[3] !== '.xlsx') {
         const format = match[3] === '_md' ? 'md' : 'csv';
         const files = listFolderFiles(entry.name, format === 'md' ? '.md' : '.csv');
         const sizeBytes = files.reduce((sum, f) => sum + fs.statSync(path.join(full, f)).size, 0);
-        return [{ filename: entry.name, period: match[1], scope, format, trainersOnly: !!match[2], files, sizeBytes, createdAt: fs.statSync(full).mtime.toISOString() }];
+        return [{ filename: entry.name, period: match[1], scope, format, flags: parseFlagSuffix(match[2]), files, sizeBytes, createdAt: fs.statSync(full).mtime.toISOString() }];
       }
       return [];
     })
     .sort((a, b) =>
-      a.scope === b.scope ? b.period.localeCompare(a.period) || Number(a.trainersOnly) - Number(b.trainersOnly) || a.format.localeCompare(b.format) : a.scope.localeCompare(b.scope)
+      a.scope === b.scope ? b.period.localeCompare(a.period) || a.flags.length - b.flags.length || a.flags.join().localeCompare(b.flags.join()) || a.format.localeCompare(b.format) : a.scope.localeCompare(b.scope)
     );
 }
 
