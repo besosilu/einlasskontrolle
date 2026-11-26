@@ -13,6 +13,7 @@ import { ActivatePage } from './pages/ActivatePage';
 import { SetInitialPasswordPage } from './pages/SetInitialPasswordPage';
 import { UsersPage } from './pages/UsersPage';
 import { LogsPage } from './pages/LogsPage';
+import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useAuth } from './context/AuthContext';
 
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/prices" element={<PricesPage />} />
         <Route path="/import" element={<ImportPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
         <Route path="/logs" element={<LogsPage />} />
         <Route
           path="/users"

@@ -40,7 +40,7 @@ app.use('/api/v1/import', requireAuth, importRoutes);
 app.use('/api/v1/prices', requireAuth, pricesRoutes);
 app.use('/api/v1/users', requireAdmin, usersRoutes);
 app.use('/api/v1/system', requireAuth, systemRoutes);
-app.use('/api/v1/reports', requireAdmin, reportsRoutes);
+app.use('/api/v1/reports', requireAuth, reportsRoutes);
 app.use('/api/v1/backup', requireAdminOrBackupApiKey, backupRoutes);
 app.use('/api/v1/settings', requireAdmin, settingsRoutes);
 

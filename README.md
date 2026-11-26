@@ -166,7 +166,7 @@ Die App erzeugt Besucherzahlen-Berichte als **Excel-Datei** (`.xlsx`) - **keine 
 
 **Nur bestimmte Kennzeichen (Mehrfachauswahl):** Im Finanzamt-Tab lassen sich unter „Nur:“ ein oder mehrere Kennzeichen ankreuzen (Übungsleiter, Neuer Ausweis, Schnupper-Training, Vorschwimmen). Dann enthält der Bericht nur Mitglieder, die mindestens eines der gewählten Kennzeichen haben (die Kennzeichen gelten, wie sie aktuell gesetzt sind, nicht rückwirkend); ohne Auswahl wie bisher alle. Der Bericht bekommt einen Namenszusatz, z. B. `Finanzamt_Monat_2026-11_Uebungsleiter-Schnupper.xlsx`, und liegt neben dem Bericht über alle Mitglieder. Zusätzlich gibt es ein Sheet bzw. eine Datei **Auswahl** (bei nur Übungsleiter: **Übungsleiter**) mit Mitgliedsnummer, Name, Vorname, Kennzeichen, **Anzahl Scans**. API: `flags=trainer,new_card,trial,pre_swim` (`trainersOnly=true` bleibt als Kurzform für `flags=trainer`).
 
-**Format wählen:** Im Finanzamt-Tab (Protokoll) steht neben Monat/Jahr die Auswahl **Excel**, **CSV** oder **Markdown**. Markdown erzeugt den Ordner `Finanzamt_Monat_<yyyy-MM>_md/` (bzw. `Finanzamt_Jahr_<yyyy>_md/`) mit einer `.md`-Datei pro Sheet (Tabelle im Markdown-Format). CSV und Markdown beginnen jeweils mit einer **Statistikzeile** (z. B. `Statistik;2026-11-10;Eintritte gesamt;3;Verschiedene Mitglieder;3`), Excel hat dafür das Sheet „Übersicht“. Zu CSV: Bei CSV entsteht statt der Datei ein Ordner `Finanzamt_Monat_<yyyy-MM>/` bzw. `Finanzamt_Jahr_<yyyy>/` mit **einer CSV-Datei pro Excel-Sheet** (`Übersicht.csv`, `2026-10-03.csv`, …; gleiche Spalten wie in Excel; `;`-getrennt, UTF-8 mit BOM). Die Dateien lassen sich einzeln im Tab herunterladen. Der automatische Monatsbericht zum Monatswechsel bleibt Excel. API: `POST /reports/generate?scope=…&period=…&format=xlsx|csv|md`, Download einer CSV-Datei über `GET /reports/<ordner>/download?file=<datei>.csv`.
+**Format wählen:** Im Menü **Berichte & Export → Finanzamt** steht neben Monat/Jahr die Auswahl **Excel**, **CSV** oder **Markdown**. Markdown erzeugt den Ordner `Finanzamt_Monat_<yyyy-MM>_md/` (bzw. `Finanzamt_Jahr_<yyyy>_md/`) mit einer `.md`-Datei pro Sheet (Tabelle im Markdown-Format). CSV und Markdown beginnen jeweils mit einer **Statistikzeile** (z. B. `Statistik;2026-11-10;Eintritte gesamt;3;Verschiedene Mitglieder;3`), Excel hat dafür das Sheet „Übersicht“. Zu CSV: Bei CSV entsteht statt der Datei ein Ordner `Finanzamt_Monat_<yyyy-MM>/` bzw. `Finanzamt_Jahr_<yyyy>/` mit **einer CSV-Datei pro Excel-Sheet** (`Übersicht.csv`, `2026-10-03.csv`, …; gleiche Spalten wie in Excel; `;`-getrennt, UTF-8 mit BOM). Die Dateien lassen sich einzeln im Tab herunterladen. Der automatische Monatsbericht zum Monatswechsel bleibt Excel. API: `POST /reports/generate?scope=…&period=…&format=xlsx|csv|md`, Download einer CSV-Datei über `GET /reports/<ordner>/download?file=<datei>.csv`.
 
 Beide Berichtsarten landen im Ordner `reports/` neben der `docker-compose.yml` (lokales Bind-Mount, `REPORTS_DIR` im Container).
 
@@ -181,14 +181,14 @@ schtasks /create /tn "EinlassBerichteSync" /tr "powershell -ExecutionPolicy Bypa
 
 In der Aufgabenplanung zusätzlich **"Computer zum Ausführen dieser Aufgabe aufwecken"** aktivieren, falls der PC zeitweise im Standby ist - sonst läuft die Aufgabe an diesem Tag einfach nicht.
 
-Manuell erzeugen (nur Admins, auch im Finanzamt-Tab unter Protokoll möglich): `POST /api/v1/reports/generate?scope=month&period=yyyy-MM` oder `?scope=year&period=yyyy` (Default ohne `period`: letzter abgeschlossener Monat bzw. letztes Jahr). Vorhandene Berichte: `GET /api/v1/reports`, Download über `GET /api/v1/reports/:filename/download`.
+Manuell erzeugen (alle angemeldeten Benutzer, im Menü **Berichte & Export → Finanzamt**): `POST /api/v1/reports/generate?scope=month&period=yyyy-MM` oder `?scope=year&period=yyyy` (Default ohne `period`: letzter abgeschlossener Monat bzw. letztes Jahr). Vorhandene Berichte: `GET /api/v1/reports`, Download über `GET /api/v1/reports/:filename/download`.
 
 ## Zentrale Backup-Sicherung (JSON-Export + MCP-Import)
 
 Zusätzlich zum `pg_dump`-Verfahren oben gibt es einen **laufenden, strukturierten Export** (JSON statt rohem SQL-Dump), gedacht für eine zweite, zentrale Postgres-Datenbank an einem anderen Ort (eigener Rechner, NAS, Cloud-VM) als Offsite-Kopie. Beide Verfahren sind unabhängig voneinander - keines ersetzt das andere.
 
 - **Was wird exportiert:** `members`, `entries`, `import_logs`, `import_member_links`, `price_items`. **Nie** exportiert: `users`/`registration_requests` (Passwort-Hashes verlassen das Haus nie) und `_migrations` (rein technisch).
-- **Auslösung:** ausschließlich manuell, über den "Sicherung"-Tab unter Protokoll (nur Admins) oder `POST /api/v1/backup/generate`. Kein automatischer Zeitplan.
+- **Auslösung:** ausschließlich manuell, über den Reiter "Sicherung" im Menü **Berichte & Export** (nur Admins) oder `POST /api/v1/backup/generate`. Kein automatischer Zeitplan.
 - **Ablage:** `backups/` (lokales Bind-Mount, `BACKUP_DIR` im Container), Dateiname `Sicherung_<Zeitstempel>.json`.
 - **Import in die zentrale DB:** über einen neuen MCP-Server, [`mcp-backup-import/`](mcp-backup-import/README.md) - läuft lokal beim Nutzer (vom Claude-Client gestartet), ruft die Backup-API ab und importiert per Upsert (idempotent, keine Duplikate bei mehrfachem Import) in die zentrale Datenbank.
 - **Maschinenzugriff absichern:** `BACKUP_API_KEY` in der `.env` setzen (z.B. `openssl rand -hex 32`) - ohne diesen Key bleibt nur der normale Admin-Login über den Browser nutzbar, der MCP-Server kann dann nicht zugreifen.
@@ -223,7 +223,7 @@ Alle Routen unter `/api/v1`, außer Login und Registrierung mit Bearer-Token.
 | Chat | `GET /stats/chat/status`, `POST /stats/chat` (`messages[]`, `today`) |
 | System | `GET /system/time` |
 | Benutzer (Admin) | `GET /users`, Registrierungen freigeben oder ablehnen, sperren, löschen |
-| Berichte (Admin) | `GET /reports`, `POST /reports/generate?scope=month\|year&period=`, `GET /reports/:filename/download` |
+| Berichte (alle angemeldeten Benutzer) | `GET /reports`, `POST /reports/generate?scope=month\|year&period=`, `GET /reports/:filename/download` |
 | Backup-Sicherung (Admin oder `X-Backup-Api-Key`) | `GET /backup`, `POST /backup/generate`, `GET /backup/:filename/download` |
 | Einstellungen (Admin) | `GET /settings/auto-import`, `PUT /settings/auto-import` (`enabled`), `POST /settings/auto-import/run` |
 | Auto-Import-Status | `GET /import/auto-status` (alle angemeldeten Benutzer) |

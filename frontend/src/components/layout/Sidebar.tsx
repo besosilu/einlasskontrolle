@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { ScanLine, BarChart3, Upload, Waves, Euro, Users, ScrollText, IdCard, Settings } from 'lucide-react';
+import { ScanLine, BarChart3, Upload, Waves, Euro, Users, ScrollText, IdCard, Settings, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 
@@ -7,6 +7,7 @@ const baseNavItems = [
   { to: '/', icon: ScanLine, label: 'Einlass' },
   { to: '/members', icon: IdCard, label: 'Mitglieder' },
   { to: '/stats', icon: BarChart3, label: 'Statistiken' },
+  { to: '/reports', icon: FileSpreadsheet, label: 'Berichte & Export' },
   { to: '/prices', icon: Euro, label: 'Preise und Kurse' },
   { to: '/import', icon: Upload, label: 'Import' },
   { to: '/logs', icon: ScrollText, label: 'Protokoll' },
