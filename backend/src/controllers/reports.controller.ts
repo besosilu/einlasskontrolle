@@ -16,6 +16,7 @@ export async function generate(req: Request, res: Response, next: NextFunction) 
   try {
     const scope = req.query['scope'] === 'year' ? 'year' : 'month';
     const format = req.query['format'] === 'csv' ? 'csv' : req.query['format'] === 'md' ? 'md' : 'xlsx';
+    const trainersOnly = req.query['trainersOnly'] === 'true';
     const period = typeof req.query['period'] === 'string' ? req.query['period'] : undefined;
 
     if (scope === 'year') {
@@ -23,7 +24,7 @@ export async function generate(req: Request, res: Response, next: NextFunction) 
       if (!YEAR_PATTERN.test(year)) {
         return res.status(400).json({ error: 'Ungültiges Jahr (erwartet yyyy)' });
       }
-      const { filename } = await reportsService.generateYearlyAttendanceReport(year, format);
+      const { filename } = await reportsService.generateYearlyAttendanceReport(year, format, trainersOnly);
       return res.status(201).json({ filename });
     }
 
@@ -31,7 +32,7 @@ export async function generate(req: Request, res: Response, next: NextFunction) 
     if (!MONTH_PATTERN.test(month)) {
       return res.status(400).json({ error: 'Ungültiger Monat (erwartet yyyy-MM)' });
     }
-    const { filename } = await reportsService.generateMonthlyAttendanceReport(month, format);
+    const { filename } = await reportsService.generateMonthlyAttendanceReport(month, format, trainersOnly);
     res.status(201).json({ filename });
   } catch (err) {
     next(err);

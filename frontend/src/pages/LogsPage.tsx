@@ -88,6 +88,7 @@ function FinanzamtTab() {
   const [scope, setScope] = useState<'month' | 'year'>('month');
   const [period, setPeriod] = useState('');
   const [format, setFormat] = useState<'xlsx' | 'csv' | 'md'>('xlsx');
+  const [trainersOnly, setTrainersOnly] = useState(false);
   const [openFolder, setOpenFolder] = useState<string | null>(null);
 
   const { data: reports = [], isLoading } = useQuery({
@@ -96,7 +97,7 @@ function FinanzamtTab() {
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => reportsApi.generate(scope, format, period || undefined),
+    mutationFn: () => reportsApi.generate(scope, format, trainersOnly, period || undefined),
     onSuccess: () => {
       showToast('success', format === 'xlsx' ? 'Bericht erzeugt (Excel).' : 'Bericht erzeugt (Ordner mit Dateien).');
       queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
@@ -184,6 +185,16 @@ function FinanzamtTab() {
             />
           )}
 
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={trainersOnly}
+              onChange={(e) => setTrainersOnly(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300"
+            />
+            nur Übungsleiter
+          </label>
+
           <button
             onClick={() => generateMutation.mutate()}
             disabled={generateMutation.isPending}
@@ -210,7 +221,7 @@ function FinanzamtTab() {
                   <p className="text-sm font-medium text-slate-800">
                     {r.period}
                     <span className="ml-2 text-xs font-normal text-slate-400">
-                      {r.scope === 'year' ? 'Jahr' : 'Monat'} · {r.format === 'csv' ? 'CSV' : r.format === 'md' ? 'Markdown' : 'Excel'}
+                      {r.scope === 'year' ? 'Jahr' : 'Monat'}{r.trainersOnly ? ' · nur Übungsleiter' : ''} · {r.format === 'csv' ? 'CSV' : r.format === 'md' ? 'Markdown' : 'Excel'}
                     </span>
                   </p>
                   <p className="text-xs text-slate-400">

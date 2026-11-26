@@ -25,13 +25,16 @@ interface ReportSheet {
   summary?: (string | number)[];
 }
 
+// Berichte nur mit Übungsleitern tragen dieses Kürzel im Namen (neben dem Bericht über alle Besucher)
+const TRAINER_SUFFIX = '_Uebungsleiter';
+
 // CSV-Berichte liegen als Ordner (ohne Endung) im Berichtsordner, Excel-Berichte als .xlsx-Datei
-function monthlyBase(yearMonth: string): string {
-  return `Finanzamt_Monat_${yearMonth}`;
+function monthlyBase(yearMonth: string, trainersOnly = false): string {
+  return `Finanzamt_Monat_${yearMonth}${trainersOnly ? TRAINER_SUFFIX : ''}`;
 }
 
-function yearlyBase(year: string): string {
-  return `Finanzamt_Jahr_${year}`;
+function yearlyBase(year: string, trainersOnly = false): string {
+  return `Finanzamt_Jahr_${year}${trainersOnly ? TRAINER_SUFFIX : ''}`;
 }
 
 async function writeXlsx(sheets: ReportSheet[], base: string): Promise<{ filename: string; path: string }> {
@@ -99,6 +102,25 @@ function writeMarkdownFolder(sheets: ReportSheet[], base: string): { filename: s
   return { filename: folder, path: finalPath };
 }
 
+const TRAINER_COLUMNS = [
+  { header: 'Mitgliedsnummer', key: 'memberNumber', width: 16 },
+  { header: 'Name', key: 'lastName', width: 22 },
+  { header: 'Vorname', key: 'firstName', width: 22 },
+  { header: 'Anzahl Scans', key: 'total', width: 14 },
+  { header: 'davon manuell', key: 'manualCount', width: 14 },
+];
+
+// Zusätzliches Sheet "Übungsleiter": Name und Anzahl der Scans pro Übungsleiter im Berichtszeitraum
+async function trainerSheet(from: string, to: string, period: string): Promise<ReportSheet> {
+  const trainers = await statsService.getTrainerSummary(from, to);
+  return {
+    name: 'Übungsleiter',
+    summary: ['Statistik Übungsleiter', period, 'Übungsleiter', trainers.length, 'Scans gesamt', trainers.reduce((sum, t) => sum + t.total, 0)],
+    columns: TRAINER_COLUMNS,
+    rows: trainers.map((t) => ({ ...t, memberNumber: t.memberNumber ?? '' })),
+  };
+}
+
 function distinctVisitors(rows: { memberNumber: string | null; lastName: string; firstName: string }[]): number {
   return new Set(rows.map((r) => r.memberNumber ?? `${r.lastName}|${r.firstName}`)).size;
 }
@@ -113,10 +135,11 @@ export { getLastCompletedMonth };
 
 export async function generateMonthlyAttendanceReport(
   yearMonth: string,
-  format: ReportFormat = 'xlsx'
+  format: ReportFormat = 'xlsx',
+  trainersOnly = false
 ): Promise<{ filename: string; path: string }> {
   const { from, to, days } = monthRange(yearMonth);
-  const dayRows = await statsService.getAttendanceByDay(from, to);
+  const dayRows = await statsService.getAttendanceByDay(from, to, trainersOnly);
   const byDate = new Map(dayRows.map((r) => [r.date, r]));
 
   const sheets: ReportSheet[] = [
@@ -128,7 +151,7 @@ export async function generateMonthlyAttendanceReport(
       ],
       rows: days.map((day) => ({ date: day, total: byDate.get(day)?.total ?? 0 })),
       summary: [
-        'Statistik',
+        trainersOnly ? 'Statistik Übungsleiter' : 'Statistik',
         yearMonth,
         'Eintritte gesamt',
         dayRows.reduce((sum, r) => sum + r.total, 0),
@@ -138,27 +161,30 @@ export async function generateMonthlyAttendanceReport(
     },
   ];
 
+  if (trainersOnly) sheets.push(await trainerSheet(from, to, yearMonth));
+
   // Ein Sheet pro Tag, an dem tatsächlich gescannt wurde (keine leeren Tage).
   for (const day of days) {
     if ((byDate.get(day)?.total ?? 0) === 0) continue;
-    const members = await statsService.getMembersForDay(day);
+    const members = await statsService.getMembersForDay(day, trainersOnly);
     sheets.push({
       name: day,
-      summary: ['Statistik', day, 'Eintritte gesamt', members.length, 'Verschiedene Mitglieder', distinctVisitors(members)],
+      summary: [trainersOnly ? 'Statistik Übungsleiter' : 'Statistik', day, 'Eintritte gesamt', members.length, 'Verschiedene Mitglieder', distinctVisitors(members)],
       columns: MEMBER_COLUMNS,
       rows: members.map((m) => ({ memberNumber: m.memberNumber ?? '', lastName: m.lastName, firstName: m.firstName })),
     });
   }
 
-  return writeReport(sheets, monthlyBase(yearMonth), format);
+  return writeReport(sheets, monthlyBase(yearMonth, trainersOnly), format);
 }
 
 export async function generateYearlyAttendanceReport(
   year: string,
-  format: ReportFormat = 'xlsx'
+  format: ReportFormat = 'xlsx',
+  trainersOnly = false
 ): Promise<{ filename: string; path: string }> {
   const { from, to, months } = yearRange(year);
-  const monthRows = await statsService.getAttendanceByMonth(from, to);
+  const monthRows = await statsService.getAttendanceByMonth(from, to, trainersOnly);
   const byMonth = new Map(monthRows.map((r) => [r.month, r.total]));
 
   const sheets: ReportSheet[] = [
@@ -170,7 +196,7 @@ export async function generateYearlyAttendanceReport(
       ],
       rows: months.map((month) => ({ month, total: byMonth.get(month) ?? 0 })),
       summary: [
-        'Statistik',
+        trainersOnly ? 'Statistik Übungsleiter' : 'Statistik',
         year,
         'Eintritte gesamt',
         [...byMonth.values()].reduce((sum, n) => sum + n, 0),
@@ -180,21 +206,23 @@ export async function generateYearlyAttendanceReport(
     },
   ];
 
+  if (trainersOnly) sheets.push(await trainerSheet(from, to, year));
+
   // Ein Sheet pro Monat mit Eintritten (statt pro Tag) - sonst zu viele Sheets für ein ganzes Jahr.
   // Jede Zeile ist ein einzelner Besuch; Mitglieder, die mehrfach im Monat waren, erscheinen mehrfach.
   for (const month of months) {
     if ((byMonth.get(month) ?? 0) === 0) continue;
     const { from: mFrom, to: mTo } = monthRange(month);
-    const entries = await statsService.getEntriesForMonth(mFrom, mTo);
+    const entries = await statsService.getEntriesForMonth(mFrom, mTo, trainersOnly);
     sheets.push({
       name: month,
-      summary: ['Statistik', month, 'Eintritte gesamt', entries.length, 'Verschiedene Mitglieder', distinctVisitors(entries)],
+      summary: [trainersOnly ? 'Statistik Übungsleiter' : 'Statistik', month, 'Eintritte gesamt', entries.length, 'Verschiedene Mitglieder', distinctVisitors(entries)],
       columns: MEMBER_COLUMNS,
       rows: entries.map((e) => ({ memberNumber: e.memberNumber ?? '', lastName: e.lastName, firstName: e.firstName })),
     });
   }
 
-  return writeReport(sheets, yearlyBase(year), format);
+  return writeReport(sheets, yearlyBase(year, trainersOnly), format);
 }
 
 export async function ensureMonthlyReportsUpToDate(): Promise<void> {
@@ -205,14 +233,16 @@ export async function ensureMonthlyReportsUpToDate(): Promise<void> {
   }
 }
 
-const MONTHLY_FILE_PATTERN = /^Finanzamt_Monat_(\d{4}-\d{2})(\.xlsx|_md)?$/;
-const YEARLY_FILE_PATTERN = /^Finanzamt_Jahr_(\d{4})(\.xlsx|_md)?$/;
+const MONTHLY_FILE_PATTERN = /^Finanzamt_Monat_(\d{4}-\d{2})(_Uebungsleiter)?(\.xlsx|_md)?$/;
+const YEARLY_FILE_PATTERN = /^Finanzamt_Jahr_(\d{4})(_Uebungsleiter)?(\.xlsx|_md)?$/;
 
 export interface ReportFile {
   filename: string;
   period: string;
   scope: 'month' | 'year';
   format: ReportFormat;
+  /** true = Bericht nur mit Übungsleitern */
+  trainersOnly: boolean;
   /** Nur bei CSV-/Markdown-Ordnern: die enthaltenen Dateien */
   files: string[];
   sizeBytes: number;
@@ -232,20 +262,20 @@ export function listReports(): ReportFile[] {
       const scope = entry.name.startsWith('Finanzamt_Monat_') ? 'month' : 'year';
       const full = path.join(REPORTS_DIR, entry.name);
       // Excel = Datei mit .xlsx, CSV = Ordner ohne Endung, Markdown = Ordner mit Endung _md
-      if (entry.isFile() && match[2] === '.xlsx') {
+      if (entry.isFile() && match[3] === '.xlsx') {
         const stat = fs.statSync(full);
-        return [{ filename: entry.name, period: match[1], scope, format: 'xlsx', files: [], sizeBytes: stat.size, createdAt: stat.mtime.toISOString() }];
+        return [{ filename: entry.name, period: match[1], scope, format: 'xlsx', trainersOnly: !!match[2], files: [], sizeBytes: stat.size, createdAt: stat.mtime.toISOString() }];
       }
-      if (entry.isDirectory() && match[2] !== '.xlsx') {
-        const format = match[2] === '_md' ? 'md' : 'csv';
+      if (entry.isDirectory() && match[3] !== '.xlsx') {
+        const format = match[3] === '_md' ? 'md' : 'csv';
         const files = listFolderFiles(entry.name, format === 'md' ? '.md' : '.csv');
         const sizeBytes = files.reduce((sum, f) => sum + fs.statSync(path.join(full, f)).size, 0);
-        return [{ filename: entry.name, period: match[1], scope, format, files, sizeBytes, createdAt: fs.statSync(full).mtime.toISOString() }];
+        return [{ filename: entry.name, period: match[1], scope, format, trainersOnly: !!match[2], files, sizeBytes, createdAt: fs.statSync(full).mtime.toISOString() }];
       }
       return [];
     })
     .sort((a, b) =>
-      a.scope === b.scope ? b.period.localeCompare(a.period) || a.format.localeCompare(b.format) : a.scope.localeCompare(b.scope)
+      a.scope === b.scope ? b.period.localeCompare(a.period) || Number(a.trainersOnly) - Number(b.trainersOnly) || a.format.localeCompare(b.format) : a.scope.localeCompare(b.scope)
     );
 }
 
